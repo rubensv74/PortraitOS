@@ -1,0 +1,462 @@
+/* ===========================================================
+   PortraitOS
+   Components
+   =========================================================== */
+
+
+/* ===========================================================
+   BUTTONS
+   =========================================================== */
+
+.button,
+button{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    gap:8px;
+
+    padding:12px 20px;
+
+    border-radius:var(--radius-md);
+
+    font-weight:var(--font-weight-semibold);
+
+    transition:var(--transition-fast);
+
+}
+
+.primary{
+
+    background:var(--color-primary);
+
+    color:white;
+
+}
+
+.primary:hover{
+
+    background:var(--color-primary-hover);
+
+}
+
+.secondary{
+
+    background:white;
+
+    color:var(--text-primary);
+
+    border:1px solid var(--border-color);
+
+}
+
+.secondary:hover{
+
+    background:var(--bg-surface-alt);
+
+}
+
+.ghost{
+
+    background:transparent;
+
+    color:var(--text-secondary);
+
+}
+
+.ghost:hover{
+
+    background:rgba(0,0,0,.04);
+
+}
+
+.danger{
+
+    background:var(--color-danger);
+
+    color:white;
+
+}
+
+
+/* ===========================================================
+   CARDS
+   =========================================================== */
+
+.card{
+
+    background:var(--bg-surface);
+
+    border:1px solid var(--border-color);
+
+    border-radius:var(--radius-lg);
+
+    padding:24px;
+
+    box-shadow:var(--shadow-sm);
+
+    transition:var(--transition-normal);
+
+}
+
+.card:hover{
+
+    box-shadow:var(--shadow-md);
+
+}
+
+.card-title{
+
+    font-size:20px;
+
+    font-weight:700;
+
+    margin-bottom:8px;
+
+}
+
+.card-description{
+
+    color:var(--text-secondary);
+
+    font-size:14px;
+
+}
+
+
+/* ===========================================================
+   INPUTS
+   =========================================================== */
+
+.field{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:8px;
+
+}
+
+.field label{
+
+    font-size:13px;
+
+    font-weight:600;
+
+    color:var(--text-secondary);
+
+}
+
+.field input,
+
+.field textarea,
+
+.field select{
+
+    width:100%;
+
+    padding:12px 14px;
+
+    border:1px solid var(--border-color);
+
+    border-radius:var(--radius-md);
+
+    background:white;
+
+    transition:var(--transition-fast);
+
+}
+
+.field textarea{
+
+    min-height:120px;
+
+}
+
+.field input:focus,
+
+.field textarea:focus,
+
+.field select:focus{
+
+    border-color:var(--color-primary);
+
+}
+
+
+/* ===========================================================
+   BADGES
+   =========================================================== */
+
+.badge{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:6px;
+
+    padding:4px 10px;
+
+    border-radius:999px;
+
+    font-size:12px;
+
+    font-weight:600;
+
+}
+
+.badge-success{
+
+    background:#ECFDF5;
+
+    color:#047857;
+
+}
+
+.badge-warning{
+
+    background:#FEF3C7;
+
+    color:#92400E;
+
+}
+
+.badge-danger{
+
+    background:#FEE2E2;
+
+    color:#991B1B;
+
+}
+
+.badge-neutral{
+
+    background:#EEF2F7;
+
+    color:#475569;
+
+}
+
+
+/* ===========================================================
+   STATUS DOT
+   =========================================================== */
+
+.status{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+}
+
+.status-dot{
+
+    width:10px;
+
+    height:10px;
+
+    border-radius:999px;
+
+}
+
+.status-success{
+
+    background:var(--color-success);
+
+}
+
+.status-warning{
+
+    background:var(--color-warning);
+
+}
+
+.status-danger{
+
+    background:var(--color-danger);
+
+}
+
+
+/* ===========================================================
+   PROGRESS
+   =========================================================== */
+
+.progress{
+
+    width:100%;
+
+    height:8px;
+
+    background:#E5E7EB;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+}
+
+.progress-value{
+
+    height:100%;
+
+    background:var(--color-primary);
+
+}
+
+
+/* ===========================================================
+   CHIPS
+   =========================================================== */
+
+.chip{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    padding:8px 14px;
+
+    border-radius:999px;
+
+    background:#EEF2F7;
+
+    font-size:13px;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+}
+
+.chip:hover{
+
+    background:#DCE5F1;
+
+}
+
+.chip.selected{
+
+    background:var(--color-primary);
+
+    color:white;
+
+}
+
+
+/* ===========================================================
+   ICON BUTTON
+   =========================================================== */
+
+.icon-button{
+
+    width:40px;
+
+    height:40px;
+
+    border-radius:12px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:white;
+
+    border:1px solid var(--border-color);
+
+}
+
+.icon-button:hover{
+
+    background:var(--bg-surface-alt);
+
+}
+
+
+/* ===========================================================
+   AVATAR
+   =========================================================== */
+
+.avatar{
+
+    width:48px;
+
+    height:48px;
+
+    border-radius:50%;
+
+    background:#E2E8F0;
+
+    overflow:hidden;
+
+}
+
+.avatar img{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+}
+
+
+/* ===========================================================
+   DIVIDER
+   =========================================================== */
+
+.divider{
+
+    width:100%;
+
+    height:1px;
+
+    background:var(--border-color);
+
+}
+
+
+/* ===========================================================
+   EMPTY STATE
+   =========================================================== */
+
+.empty{
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:16px;
+
+    padding:60px;
+
+    text-align:center;
+
+    color:var(--text-muted);
+
+}
+
+.empty svg{
+
+    width:64px;
+
+    height:64px;
+
+    opacity:.35;
+
+}
