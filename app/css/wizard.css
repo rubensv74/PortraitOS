@@ -1,0 +1,293 @@
+/* ===========================================================
+   PortraitOS
+   Wizard System
+   =========================================================== */
+
+/* ===========================================================
+   CONTENEDOR
+   =========================================================== */
+
+.wizard{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:24px;
+
+    background:var(--bg-surface);
+
+    border-bottom:1px solid var(--border-color);
+
+    padding:24px 40px;
+
+}
+
+
+/* ===========================================================
+   PROGRESS BAR
+   =========================================================== */
+
+.wizard-progress{
+
+    width:100%;
+
+}
+
+.progress-bar{
+
+    height:8px;
+
+    background:#E5E7EB;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+}
+
+.progress-fill{
+
+    height:100%;
+
+    width:0;
+
+    background:linear-gradient(
+        90deg,
+        var(--color-primary),
+        #3B82F6
+    );
+
+    transition:.35s ease;
+
+}
+
+
+/* ===========================================================
+   STEP NAVIGATION
+   =========================================================== */
+
+.wizard-steps{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    gap:12px;
+
+    flex-wrap:wrap;
+
+}
+
+
+/* ===========================================================
+   STEP
+   =========================================================== */
+
+.step{
+
+    flex:1;
+
+    min-width:140px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    padding:14px 18px;
+
+    border-radius:12px;
+
+    background:white;
+
+    border:1px solid var(--border-color);
+
+    font-weight:600;
+
+    color:var(--text-secondary);
+
+    transition:.25s;
+
+}
+
+
+/* ===========================================================
+   ACTIVE STEP
+   =========================================================== */
+
+.step.active{
+
+    background:var(--color-primary);
+
+    color:white;
+
+    border-color:var(--color-primary);
+
+}
+
+
+/* ===========================================================
+   COMPLETED STEP
+   =========================================================== */
+
+.step.completed{
+
+    background:#ECFDF5;
+
+    color:#047857;
+
+    border-color:#A7F3D0;
+
+}
+
+
+/* ===========================================================
+   DISABLED
+   =========================================================== */
+
+.step.disabled{
+
+    opacity:.45;
+
+    cursor:default;
+
+}
+
+
+/* ===========================================================
+   CONTENT
+   =========================================================== */
+
+.step-content{
+
+    display:none;
+
+    animation:fade .25s ease;
+
+}
+
+.step-content.active{
+
+    display:block;
+
+}
+
+@keyframes fade{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(10px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:none;
+
+    }
+
+}
+
+
+/* ===========================================================
+   PAGE TITLE
+   =========================================================== */
+
+.step-title{
+
+    font-size:30px;
+
+    font-weight:700;
+
+    margin-bottom:10px;
+
+}
+
+.step-description{
+
+    color:var(--text-secondary);
+
+    margin-bottom:32px;
+
+    max-width:900px;
+
+    line-height:1.6;
+
+}
+
+
+/* ===========================================================
+   NAVIGATION FOOTER
+   =========================================================== */
+
+.wizard-footer{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    gap:20px;
+
+}
+
+
+/* ===========================================================
+   STEP COUNTER
+   =========================================================== */
+
+.step-counter{
+
+    font-size:14px;
+
+    color:var(--text-muted);
+
+}
+
+
+/* ===========================================================
+   RESPONSIVE
+   =========================================================== */
+
+@media (max-width:900px){
+
+    .wizard{
+
+        padding:20px;
+
+    }
+
+    .wizard-steps{
+
+        display:grid;
+
+        grid-template-columns:repeat(2,1fr);
+
+    }
+
+}
+
+@media (max-width:640px){
+
+    .wizard-steps{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .step{
+
+        width:100%;
+
+    }
+
+}
