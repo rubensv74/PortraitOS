@@ -1,1 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
 
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>PortraitOS</title>
+
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/wizard.css">
+    <link rel="stylesheet" href="css/app.css">
+
+</head>
+
+<body>
+
+<div id="app">
+
+    <!-- ========================================================= -->
+    <!-- SIDEBAR -->
+    <!-- ========================================================= -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+
+            <div class="logo-icon">
+
+                P
+
+            </div>
+
+            <div>
+
+                <h1>PortraitOS</h1>
+
+                <span>Professional Portrait Intelligence</span>
+
+            </div>
+
+        </div>
+
+        <nav>
+
+            <button class="nav-item active">
+
+                <span>①</span>
+
+                <div>
+
+                    <strong>Identity Studio</strong>
+
+                    <small>Construcción del perfil</small>
+
+                </div>
+
+            </button>
+
+            <button class="nav-item disabled">
+
+                <span>②</span>
+
+                <div>
+
+                    <strong>Creative Director</strong>
+
+                    <small>Próximamente</small>
+
+                </div>
+
+            </button>
+
+            <button class="nav-item disabled">
+
+                <span>③</span>
+
+                <div>
+
+                    <strong>Prompt Compiler</strong>
+
+                    <small>Próximamente</small>
+
+                </div>
+
+            </button>
+
+            <button class="nav-item disabled">
+
+                <span>④</span>
+
+                <div>
+
+                    <strong>Portrait Review</strong>
+
+                    <small>Próximamente</small>
+
+                </div>
+
+            </button>
+
+            <button class="nav-item disabled">
+
+                <span>⑤</span>
+
+                <div>
+
+                    <strong>Knowledge Studio</strong>
+
+                    <small>Próximamente</small>
+
+                </div>
+
+            </button>
+
+        </nav>
+
+        <footer>
+
+            Foundation 0.1
+
+        </footer>
+
+    </aside>
+
+    <!-- ========================================================= -->
+    <!-- MAIN -->
+    <!-- ========================================================= -->
+
+    <main class="main">
+
+        <!-- HEADER -->
+
+        <header class="topbar">
+
+            <div>
+
+                <h2>
+
+                    Identity Studio
+
+                </h2>
+
+                <p>
+
+                    Construye el contrato permanente de identidad.
+
+                </p>
+
+            </div>
+
+            <div>
+
+                <button class="secondary">
+
+                    Importar Perfil
+
+                </button>
+
+                <button class="primary">
+
+                    Exportar Perfil
+
+                </button>
+
+            </div>
+
+        </header>
+
+        <!-- WIZARD -->
+
+        <section class="wizard">
+
+            <div class="wizard-progress">
+
+                <div class="progress-bar">
+
+                    <div
+                        class="progress-fill"
+                        style="width:16%;">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="wizard-steps">
+
+                <button class="step active">
+
+                    Fotografías
+
+                </button>
+
+                <button class="step">
+
+                    Identity Contract™
+
+                </button>
+
+                <button class="step">
+
+                    Face Lock™
+
+                </button>
+
+                <button class="step">
+
+                    Objetivo
+
+                </button>
+
+                <button class="step">
+
+                    Percepción
+
+                </button>
+
+                <button class="step">
+
+                    Resumen
+
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- CONTENT -->
+
+        <section id="workspace">
+
+            <!--
+                El contenido se cargará dinámicamente
+                mediante JavaScript.
+
+                Cada paso del wizard será un componente
+                independiente.
+            -->
+
+        </section>
+
+        <!-- FOOTER -->
+
+        <footer class="wizard-footer">
+
+            <button class="secondary">
+
+                Anterior
+
+            </button>
+
+            <button class="primary">
+
+                Siguiente
+
+            </button>
+
+        </footer>
+
+    </main>
+
+</div>
+
+<script src="js/storage.js"></script>
+<script src="js/router.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/wizard.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+
+</html>
