@@ -1,0 +1,381 @@
+/* ===========================================================
+   PortraitOS
+   Layout
+   =========================================================== */
+
+
+/* ===========================================================
+   APP
+   =========================================================== */
+
+#app{
+
+    display:grid;
+
+    grid-template-columns:
+        var(--sidebar-width)
+        1fr;
+
+    min-height:100vh;
+
+    background:var(--bg-app);
+
+}
+
+
+/* ===========================================================
+   SIDEBAR
+   =========================================================== */
+
+.sidebar{
+
+    background:var(--bg-sidebar);
+
+    color:var(--text-sidebar);
+
+    display:flex;
+
+    flex-direction:column;
+
+    border-right:1px solid rgba(255,255,255,.06);
+
+    position:sticky;
+
+    top:0;
+
+    height:100vh;
+
+    overflow:auto;
+
+}
+
+
+/* ===========================================================
+   LOGO
+   =========================================================== */
+
+.logo{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+    padding:32px 24px;
+
+}
+
+.logo h1{
+
+    font-size:20px;
+
+    font-weight:700;
+
+}
+
+.logo span{
+
+    display:block;
+
+    margin-top:4px;
+
+    font-size:12px;
+
+    color:#94A3B8;
+
+}
+
+.logo-icon{
+
+    width:54px;
+
+    height:54px;
+
+    border-radius:18px;
+
+    background:white;
+
+    color:#111827;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:24px;
+
+    font-weight:700;
+
+}
+
+
+/* ===========================================================
+   NAVEGACIÓN
+   =========================================================== */
+
+.sidebar nav{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+    padding:0 16px;
+
+    flex:1;
+
+}
+
+
+/* ===========================================================
+   FOOTER SIDEBAR
+   =========================================================== */
+
+.sidebar footer{
+
+    padding:24px;
+
+    border-top:1px solid rgba(255,255,255,.08);
+
+    font-size:13px;
+
+    color:#94A3B8;
+
+}
+
+
+/* ===========================================================
+   MAIN
+   =========================================================== */
+
+.main{
+
+    display:flex;
+
+    flex-direction:column;
+
+    overflow:hidden;
+
+}
+
+
+/* ===========================================================
+   TOPBAR
+   =========================================================== */
+
+.topbar{
+
+    height:var(--topbar-height);
+
+    background:white;
+
+    border-bottom:1px solid var(--border-color);
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:0 36px;
+
+    flex-shrink:0;
+
+}
+
+.topbar h2{
+
+    font-size:26px;
+
+    font-weight:700;
+
+}
+
+.topbar p{
+
+    margin-top:4px;
+
+    color:var(--text-secondary);
+
+    font-size:14px;
+
+}
+
+
+/* ===========================================================
+   CONTENIDO
+   =========================================================== */
+
+#workspace{
+
+    flex:1;
+
+    overflow:auto;
+
+    padding:40px;
+
+}
+
+
+/* ===========================================================
+   CONTENEDOR
+   =========================================================== */
+
+.container{
+
+    max-width:var(--content-max-width);
+
+    margin:auto;
+
+}
+
+
+/* ===========================================================
+   GRID
+   =========================================================== */
+
+.grid{
+
+    display:grid;
+
+    gap:24px;
+
+}
+
+.grid-2{
+
+    grid-template-columns:
+
+        repeat(2,1fr);
+
+}
+
+.grid-3{
+
+    grid-template-columns:
+
+        repeat(3,1fr);
+
+}
+
+.grid-4{
+
+    grid-template-columns:
+
+        repeat(4,1fr);
+
+}
+
+
+/* ===========================================================
+   WIZARD
+   =========================================================== */
+
+.wizard{
+
+    background:white;
+
+    border-bottom:1px solid var(--border-color);
+
+    padding:20px 40px;
+
+}
+
+
+/* ===========================================================
+   FOOTER
+   =========================================================== */
+
+.wizard-footer{
+
+    background:white;
+
+    border-top:1px solid var(--border-color);
+
+    padding:20px 36px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+}
+
+
+/* ===========================================================
+   RESPONSIVE
+   =========================================================== */
+
+@media (max-width:1200px){
+
+    .grid-4{
+
+        grid-template-columns:
+
+            repeat(2,1fr);
+
+    }
+
+}
+
+@media (max-width:900px){
+
+    #app{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .sidebar{
+
+        height:auto;
+
+        position:relative;
+
+    }
+
+    .topbar{
+
+        padding:20px;
+
+        height:auto;
+
+    }
+
+    #workspace{
+
+        padding:24px;
+
+    }
+
+}
+
+@media (max-width:640px){
+
+    .grid-2,
+
+    .grid-3,
+
+    .grid-4{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .wizard{
+
+        padding:16px;
+
+    }
+
+    .wizard-footer{
+
+        padding:16px;
+
+    }
+
+}
