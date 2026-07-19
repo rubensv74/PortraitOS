@@ -1,4743 +1,1758 @@
-/* ===========================================================
-   PortraitOS
-   UI Layer
-   Version: 0.1.0
-   =========================================================== */
-
 "use strict";
 
-const PortraitUI = (() => {
+/* ============================================================
+   PortraitOS
+   UI Controller
+   ------------------------------------------------------------
+   Responsabilidad:
+   - Inicializar la interfaz.
+   - Renderizar el wizard.
+   - Gestionar navegación y estados visuales.
+   - Mostrar notificaciones, modales y confirmaciones.
+   - Coordinar la UI con Wizard, Router y AppEvents.
+   ============================================================ */
 
-    /* =======================================================
-       ESTADO INTERNO
-       ======================================================= */
+const UI = (() => {
+
+    const SELECTORS = Object.freeze({
+        APP:
+            "[data-app]",
+
+        VIEW:
+            "[data-view]",
+
+        WIZARD_NAV:
+            "[data-wizard-nav]",
+
+        WIZARD_STEP:
+            "[data-wizard-step]",
+
+        STEP_PANEL:
+            "[data-step-panel]",
+
+        NEXT:
+            "[data-action='wizard-next']",
+
+        PREVIOUS:
+            "[data-action='wizard-previous']",
+
+        SAVE:
+            "[data-action='profile-save']",
+
+        GENERATE:
+            "[data-action='prompt-generate']",
+
+        NOTIFICATIONS:
+            "[data-notifications]",
+
+        MODAL_ROOT:
+            "[data-modal-root]",
+
+        BUSY_OVERLAY:
+            "[data-busy-overlay]",
+
+        PROGRESS:
+            "[data-wizard-progress]",
+
+        PROGRESS_LABEL:
+            "[data-wizard-progress-label]",
+
+        CURRENT_STEP_TITLE:
+            "[data-current-step-title]",
+
+        CURRENT_STEP_DESCRIPTION:
+            "[data-current-step-description]"
+    });
+
+    const CLASSES = Object.freeze({
+        ACTIVE:
+            "is-active",
+
+        COMPLETE:
+            "is-complete",
+
+        INVALID:
+            "is-invalid",
+
+        VISITED:
+            "is-visited",
+
+        DISABLED:
+            "is-disabled",
+
+        BUSY:
+            "is-busy",
+
+        VISIBLE:
+            "is-visible",
+
+        HIDDEN:
+            "is-hidden"
+    });
 
     let initialized = false;
 
-    let elements = {};
+    let elements =
+        createElementRegistry();
 
-    let lastState = null;
+    let subscriptions = [];
 
-    let activeModal = null;
+    let notificationCounter = 0;
 
-    let loadingCount = 0;
-
-    let toastSequence = 0;
-
-
-    const STEP_ICONS = Object.freeze({
-
-        photos: "01",
-
-        identity: "02",
-
-        faceLock: "03",
-
-        goal: "04",
-
-        perception: "05",
-
-        summary: "06"
-
-    });
-
-
-    const GOAL_OPTIONS = Object.freeze([
-
-        {
-
-            id: "linkedin",
-
-            title: "LinkedIn",
-
-            description:
-                "Retrato profesional para perfil, publicaciones y presencia corporativa.",
-
-            icon: "LI"
-
-        },
-
-        {
-
-            id: "corporate",
-
-            title: "Perfil corporativo",
-
-            description:
-                "Imagen institucional para directorios, intranet, firma o dossier.",
-
-            icon: "CO"
-
-        },
-
-        {
-
-            id: "executive",
-
-            title: "Retrato ejecutivo",
-
-            description:
-                "Presencia estratégica, liderazgo, credibilidad y capacidad de decisión.",
-
-            icon: "EX"
-
-        },
-
-        {
-
-            id: "editorial",
-
-            title: "Editorial profesional",
-
-            description:
-                "Retrato con intención visual para artículos, entrevistas o publicaciones.",
-
-            icon: "ED"
-
-        },
-
-        {
-
-            id: "speaker",
-
-            title: "Ponente o conferencia",
-
-            description:
-                "Imagen para congresos, programas, webinars y materiales promocionales.",
-
-            icon: "SP"
-
-        },
-
-        {
-
-            id: "personal-brand",
-
-            title: "Marca personal",
-
-            description:
-                "Retrato distintivo y coherente con una identidad profesional propia.",
-
-            icon: "MP"
-
-        }
-
-    ]);
-
-
-    const PERCEPTION_OPTIONS = Object.freeze([
-
-        {
-
-            id: "credible",
-
-            title: "Credibilidad",
-
-            description:
-                "Seguridad, solvencia y confianza profesional.",
-
-            icon: "CR"
-
-        },
-
-        {
-
-            id: "approachable",
-
-            title: "Cercanía",
-
-            description:
-                "Accesibilidad, escucha y trato humano.",
-
-            icon: "CE"
-
-        },
-
-        {
-
-            id: "leadership",
-
-            title: "Liderazgo",
-
-            description:
-                "Autoridad serena, dirección y capacidad de decisión.",
-
-            icon: "LI"
-
-        },
-
-        {
-
-            id: "competent",
-
-            title: "Competencia",
-
-            description:
-                "Dominio técnico, precisión y fiabilidad.",
-
-            icon: "CO"
-
-        },
-
-        {
-
-            id: "creative",
-
-            title: "Creatividad",
-
-            description:
-                "Originalidad, sensibilidad visual y pensamiento diferente.",
-
-            icon: "CV"
-
-        },
-
-        {
-
-            id: "confident",
-
-            title: "Confianza",
-
-            description:
-                "Autoconfianza equilibrada, sin rigidez ni arrogancia.",
-
-            icon: "CF"
-
-        },
-
-        {
-
-            id: "warm",
-
-            title: "Calidez",
-
-            description:
-                "Empatía, naturalidad y conexión emocional.",
-
-            icon: "CA"
-
-        },
-
-        {
-
-            id: "strategic",
-
-            title: "Visión estratégica",
-
-            description:
-                "Perspectiva, madurez y orientación a resultados.",
-
-            icon: "VE"
-
-        },
-
-        {
-
-            id: "dynamic",
-
-            title: "Dinamismo",
-
-            description:
-                "Energía, iniciativa y disposición para actuar.",
-
-            icon: "DI"
-
-        }
-
-    ]);
-
-
-    /* =======================================================
+    /* ========================================================
        INICIALIZACIÓN
-       ======================================================= */
+       ======================================================== */
 
-    function initialize() {
-
+    function init(options = {}) {
         if (initialized) {
-
-            return;
-
+            return getState();
         }
 
-        ensureApplicationShell();
+        validateDependencies();
 
-        cacheElements();
+        cacheElements(
+            options.root ||
+            document
+        );
 
-        attachGlobalEvents();
+        bindDomEvents();
+        bindApplicationEvents();
+
+        Wizard.init(
+            options.wizard || {}
+        );
+
+        render();
 
         initialized = true;
 
+        document.documentElement
+            .setAttribute(
+                "data-portraitos-ready",
+                "true"
+            );
+
+        return getState();
     }
 
+    function destroy() {
+        subscriptions.forEach(
+            unsubscribe => {
+                if (
+                    typeof unsubscribe ===
+                    "function"
+                ) {
+                    unsubscribe();
+                }
+            }
+        );
 
-    function ensureApplicationShell() {
+        subscriptions = [];
 
-        let workspace =
-            document.getElementById(
-                "workspace"
-            );
+        initialized = false;
 
-        if (!workspace) {
+        elements =
+            createElementRegistry();
 
-            workspace =
-                document.createElement(
-                    "main"
-                );
-
-            workspace.id =
-                "workspace";
-
-            workspace.setAttribute(
-                "aria-live",
-                "polite"
-            );
-
-            document.body.appendChild(
-                workspace
-            );
-
-        }
-
-        if (
-            !document.querySelector(
-                ".toast-container"
-            )
-        ) {
-
-            const toastContainer =
-                document.createElement(
-                    "div"
-                );
-
-            toastContainer.className =
-                "toast-container";
-
-            toastContainer.setAttribute(
-                "aria-live",
-                "polite"
-            );
-
-            document.body.appendChild(
-                toastContainer
-            );
-
-        }
-
+        return true;
     }
 
-
-    function cacheElements() {
-
-        elements = {
-
-            app:
-
-                document.getElementById(
-                    "app"
-                ),
-
-            sidebar:
-
-                document.querySelector(
-                    ".sidebar"
-                ),
-
-            sidebarNav:
-
-                document.querySelector(
-                    "[data-sidebar-nav]"
-                ) ||
-
-                document.querySelector(
-                    ".sidebar nav"
-                ),
-
-            topbar:
-
-                document.querySelector(
-                    ".topbar"
-                ),
-
-            pageTitle:
-
-                document.getElementById(
-                    "pageTitle"
-                ) ||
-
-                document.querySelector(
-                    "[data-page-title]"
-                ) ||
-
-                document.querySelector(
-                    ".topbar h2"
-                ),
-
-            pageDescription:
-
-                document.getElementById(
-                    "pageDescription"
-                ) ||
-
-                document.querySelector(
-                    "[data-page-description]"
-                ) ||
-
-                document.querySelector(
-                    ".topbar p"
-                ),
-
-            workspace:
-
-                document.getElementById(
-                    "workspace"
-                ),
-
-            wizardSteps:
-
-                document.querySelector(
-                    "[data-wizard-steps]"
-                ) ||
-
-                document.querySelector(
-                    ".wizard-steps"
-                ),
-
-            progressFill:
-
-                document.querySelector(
-                    ".progress-fill"
-                ),
-
-            previousButton:
-
-                document.getElementById(
-                    "btnPrevious"
-                ) ||
-
-                document.querySelector(
-                    "[data-action='previous']"
-                ),
-
-            nextButton:
-
-                document.getElementById(
-                    "btnNext"
-                ) ||
-
-                document.querySelector(
-                    "[data-action='next']"
-                ),
-
-            stepCounter:
-
-                document.querySelector(
-                    ".step-counter"
-                ),
-
-            toastContainer:
-
-                document.querySelector(
-                    ".toast-container"
-                )
-
+    function createElementRegistry() {
+        return {
+            root: null,
+            view: null,
+            wizardNav: null,
+            wizardSteps: [],
+            stepPanels: [],
+            nextButton: null,
+            previousButton: null,
+            saveButton: null,
+            generateButton: null,
+            notifications: null,
+            modalRoot: null,
+            busyOverlay: null,
+            progress: null,
+            progressLabel: null,
+            currentStepTitle: null,
+            currentStepDescription: null
         };
-
     }
 
+    function cacheElements(root) {
+        elements.root =
+            root.querySelector(
+                SELECTORS.APP
+            ) ||
+            root.body ||
+            root.documentElement;
 
-    function attachGlobalEvents() {
+        elements.view =
+            root.querySelector(
+                SELECTORS.VIEW
+            );
 
-        document.addEventListener(
-            "click",
-            handleDocumentClick
-        );
+        elements.wizardNav =
+            root.querySelector(
+                SELECTORS.WIZARD_NAV
+            );
 
-        document.addEventListener(
-            "change",
-            handleDocumentChange
-        );
+        elements.wizardSteps =
+            [
+                ...root.querySelectorAll(
+                    SELECTORS.WIZARD_STEP
+                )
+            ];
 
-        document.addEventListener(
-            "input",
-            handleDocumentInput
-        );
+        elements.stepPanels =
+            [
+                ...root.querySelectorAll(
+                    SELECTORS.STEP_PANEL
+                )
+            ];
+
+        elements.nextButton =
+            root.querySelector(
+                SELECTORS.NEXT
+            );
+
+        elements.previousButton =
+            root.querySelector(
+                SELECTORS.PREVIOUS
+            );
+
+        elements.saveButton =
+            root.querySelector(
+                SELECTORS.SAVE
+            );
+
+        elements.generateButton =
+            root.querySelector(
+                SELECTORS.GENERATE
+            );
+
+        elements.notifications =
+            root.querySelector(
+                SELECTORS.NOTIFICATIONS
+            );
+
+        elements.modalRoot =
+            root.querySelector(
+                SELECTORS.MODAL_ROOT
+            );
+
+        elements.busyOverlay =
+            root.querySelector(
+                SELECTORS.BUSY_OVERLAY
+            );
+
+        elements.progress =
+            root.querySelector(
+                SELECTORS.PROGRESS
+            );
+
+        elements.progressLabel =
+            root.querySelector(
+                SELECTORS.PROGRESS_LABEL
+            );
+
+        elements.currentStepTitle =
+            root.querySelector(
+                SELECTORS.CURRENT_STEP_TITLE
+            );
+
+        elements.currentStepDescription =
+            root.querySelector(
+                SELECTORS.CURRENT_STEP_DESCRIPTION
+            );
+    }
+
+    /* ========================================================
+       EVENTOS DOM
+       ======================================================== */
+
+    function bindDomEvents() {
+        elements.wizardNav
+            ?.addEventListener(
+                "click",
+                handleWizardNavigation
+            );
+
+        elements.nextButton
+            ?.addEventListener(
+                "click",
+                handleNext
+            );
+
+        elements.previousButton
+            ?.addEventListener(
+                "click",
+                handlePrevious
+            );
+
+        elements.saveButton
+            ?.addEventListener(
+                "click",
+                handleSave
+            );
+
+        elements.generateButton
+            ?.addEventListener(
+                "click",
+                handleGenerate
+            );
 
         document.addEventListener(
             "keydown",
-            handleDocumentKeydown
+            handleKeyboard
         );
 
         document.addEventListener(
-            "dragover",
-            handleDragOver
+            "click",
+            handleGlobalActions
         );
-
-        document.addEventListener(
-            "dragleave",
-            handleDragLeave
-        );
-
-        document.addEventListener(
-            "drop",
-            handleDrop
-        );
-
     }
 
-
-    /* =======================================================
-       RENDER PRINCIPAL
-       ======================================================= */
-
-    function render(state) {
-
-        initialize();
-
-        if (
-            !state ||
-            typeof state !== "object"
-        ) {
-
-            throw new TypeError(
-                "PortraitUI.render requiere un estado válido."
+    function handleWizardNavigation(event) {
+        const button =
+            event.target.closest(
+                SELECTORS.WIZARD_STEP
             );
 
-        }
-
-        lastState = state;
-
-        renderHeader(state);
-
-        renderSidebar(state);
-
-        renderWizardNavigation(state);
-
-        renderStep(state);
-
-        renderProgress(state);
-
-        updateButtons(state);
-
-    }
-
-
-    function renderHeader(state) {
-
-        const route =
-            state.route || {};
-
-        if (elements.pageTitle) {
-
-            elements.pageTitle.textContent =
-
-                route.title ||
-
-                state.step?.title ||
-
-                "PortraitOS";
-
-        }
-
-        if (
-            elements.pageDescription
-        ) {
-
-            elements.pageDescription.textContent =
-
-                route.description ||
-
-                "Sistema profesional de inteligencia para retrato.";
-
-        }
-
-    }
-
-
-    /* =======================================================
-       SIDEBAR
-       ======================================================= */
-
-    function renderSidebar(state) {
-
-        if (
-            !elements.sidebarNav ||
-            !window.PortraitRouter
-        ) {
-
+        if (!button) {
             return;
-
         }
 
-        const routes =
-            PortraitRouter.getRoutes();
-
-        const currentStep =
-            Number(
-                state.currentStep || 0
+        const stepId =
+            normalizeText(
+                button.dataset
+                    .wizardStep
             );
 
-        const completedSteps =
-            normalizeCompletedSteps(
-                state.session
-            );
-
-        elements.sidebarNav.innerHTML =
-
-            routes
-
-                .map(route => {
-
-                    const isActive =
-                        route.step ===
-                        currentStep;
-
-                    const isCompleted =
-                        completedSteps.includes(
-                            route.step
-                        );
-
-                    const isAllowed =
-                        canNavigateToRoute(
-                            route,
-                            state
-                        );
-
-                    const classes = [
-
-                        "nav-item",
-
-                        isActive
-                            ? "active"
-                            : "",
-
-                        isCompleted
-                            ? "completed"
-                            : "",
-
-                        !isAllowed
-                            ? "disabled"
-                            : ""
-
-                    ]
-
-                        .filter(Boolean)
-
-                        .join(" ");
-
-                    return `
-
-                        <button
-
-                            type="button"
-
-                            class="${classes}"
-
-                            data-route="${escapeAttribute(
-                                route.id
-                            )}"
-
-                            data-step="${route.step}"
-
-                            aria-current="${
-                                isActive
-                                    ? "step"
-                                    : "false"
-                            }"
-
-                            aria-disabled="${
-                                !isAllowed
-                            }"
-
-                            ${
-                                !isAllowed
-                                    ? "disabled"
-                                    : ""
-                            }
-
-                        >
-
-                            <span aria-hidden="true">
-
-                                ${
-                                    STEP_ICONS[
-                                        route.id
-                                    ] ||
-
-                                    String(
-                                        route.step + 1
-                                    ).padStart(
-                                        2,
-                                        "0"
-                                    )
-                                }
-
-                            </span>
-
-                            <div>
-
-                                <strong>
-
-                                    ${escapeHTML(
-                                        route.title
-                                    )}
-
-                                </strong>
-
-                                <small>
-
-                                    ${getRouteStatusLabel(
-
-                                        route.step,
-
-                                        currentStep,
-
-                                        completedSteps
-
-                                    )}
-
-                                </small>
-
-                            </div>
-
-                        </button>
-
-                    `;
-
-                })
-
-                .join("");
-
-    }
-
-
-    function renderWizardNavigation(
-        state
-    ) {
-
-        if (
-            !elements.wizardSteps ||
-            !window.PortraitRouter
-        ) {
-
+        if (!stepId) {
             return;
-
         }
 
-        const routes =
-            PortraitRouter.getRoutes();
-
-        const currentStep =
-            Number(
-                state.currentStep || 0
-            );
-
-        const completedSteps =
-            normalizeCompletedSteps(
-                state.session
-            );
-
-        elements.wizardSteps.innerHTML =
-
-            routes
-
-                .map(route => {
-
-                    const isActive =
-                        route.step ===
-                        currentStep;
-
-                    const isCompleted =
-                        completedSteps.includes(
-                            route.step
-                        );
-
-                    const isAllowed =
-                        canNavigateToRoute(
-                            route,
-                            state
-                        );
-
-                    const classes = [
-
-                        "step",
-
-                        isActive
-                            ? "active"
-                            : "",
-
-                        isCompleted
-                            ? "completed"
-                            : "",
-
-                        !isAllowed
-                            ? "disabled"
-                            : ""
-
-                    ]
-
-                        .filter(Boolean)
-
-                        .join(" ");
-
-                    return `
-
-                        <button
-
-                            type="button"
-
-                            class="${classes}"
-
-                            data-route="${escapeAttribute(
-                                route.id
-                            )}"
-
-                            data-step="${route.step}"
-
-                            aria-current="${
-                                isActive
-                                    ? "step"
-                                    : "false"
-                            }"
-
-                            ${
-                                !isAllowed
-                                    ? "disabled"
-                                    : ""
-                            }
-
-                        >
-
-                            ${escapeHTML(
-                                route.title
-                            )}
-
-                        </button>
-
-                    `;
-
-                })
-
-                .join("");
-
-    }
-
-
-    function getRouteStatusLabel(
-
-        step,
-
-        currentStep,
-
-        completedSteps
-
-    ) {
+        const result =
+            Wizard.goTo(stepId);
 
         if (
-            step === currentStep
+            result.changed === false &&
+            result.validation
         ) {
-
-            return "Paso actual";
-
+            showValidation(
+                result.validation
+            );
         }
-
-        if (
-            completedSteps.includes(
-                step
-            )
-        ) {
-
-            return "Completado";
-
-        }
-
-        if (
-            step < currentStep
-        ) {
-
-            return "Revisable";
-
-        }
-
-        return "Pendiente";
-
     }
 
-
-    function canNavigateToRoute(
-
-        route,
-
-        state
-
-    ) {
+    function handleNext() {
+        const result =
+            Wizard.next();
 
         if (
-            !window.PortraitRouter
-                ?.canNavigateToStep
+            result?.changed === false &&
+            result.validation
         ) {
+            showValidation(
+                result.validation
+            );
+        }
+    }
 
-            return (
-                route.step <=
-                Number(
-                    state.currentStep || 0
-                ) + 1
+    function handlePrevious() {
+        Wizard.previous();
+    }
+
+    async function handleSave() {
+        try {
+            setBusy(
+                true,
+                "Guardando perfil..."
             );
 
-        }
-
-        return PortraitRouter
-            .canNavigateToStep(
-
-                route.step,
-
-                state.session || {}
-
-            );
-
-    }
-
-
-    /* =======================================================
-       RENDER DEL PASO
-       ======================================================= */
-
-    function renderStep(state) {
-
-        const routeId =
-
-            state.route?.id ||
-
-            state.step?.id ||
-
-            "photos";
-
-        let content = "";
-
-        switch (routeId) {
-
-            case "photos":
-
-                content =
-                    renderPhotos(state);
-
-                break;
-
-            case "identity":
-
-                content =
-                    renderIdentity(state);
-
-                break;
-
-            case "faceLock":
-
-                content =
-                    renderFaceLock(state);
-
-                break;
-
-            case "goal":
-
-                content =
-                    renderGoal(state);
-
-                break;
-
-            case "perception":
-
-                content =
-                    renderPerception(
-                        state
-                    );
-
-                break;
-
-            case "summary":
-
-                content =
-                    renderSummary(state);
-
-                break;
-
-            default:
-
-                content =
-                    renderUnknownStep(
-                        routeId
-                    );
-
-        }
-
-        elements.workspace.innerHTML = `
-
-            <div class="container">
-
-                ${content}
-
-            </div>
-
-        `;
-
-        focusWorkspaceHeading();
-
-    }
-
-
-    function renderStepHeader({
-
-        eyebrow,
-
-        title,
-
-        description,
-
-        actions = ""
-
-    }) {
-
-        return `
-
-            <header class="workspace-header">
-
-                <div class="workspace-header__content">
-
-                    <span class="workspace-eyebrow">
-
-                        ${escapeHTML(
-                            eyebrow
-                        )}
-
-                    </span>
-
-                    <h1
-
-                        class="workspace-title"
-
-                        tabindex="-1"
-
-                        data-workspace-heading
-
-                    >
-
-                        ${escapeHTML(
-                            title
-                        )}
-
-                    </h1>
-
-                    <p class="workspace-description">
-
-                        ${escapeHTML(
-                            description
-                        )}
-
-                    </p>
-
-                </div>
-
-                ${
-                    actions
-
-                        ? `
-
-                            <div class="workspace-actions">
-
-                                ${actions}
-
-                            </div>
-
-                        `
-
-                        : ""
+            ProfileService.save();
+
+            notify(
+                "Perfil guardado correctamente.",
+                {
+                    type:
+                        "success"
                 }
-
-            </header>
-
-        `;
-
-    }
-
-
-    /* =======================================================
-       FOTOGRAFÍAS
-       ======================================================= */
-
-    function renderPhotos(state) {
-
-        const photos =
-
-            Array.isArray(
-
-                state.profile
-                    ?.identity
-                    ?.photos
-
-            )
-
-                ? state.profile
-                    .identity
-                    .photos
-
-                : [];
-
-        const primaryPhotoId =
-
-            state.profile
-                ?.identity
-                ?.primaryPhotoId ||
-
-            null;
-
-        return `
-
-            ${renderStepHeader({
-
-                eyebrow:
-                    "Identidad visual",
-
-                title:
-                    "Fotografías de referencia",
-
-                description:
-                    "Añade imágenes nítidas y representativas. Estas fotografías constituyen la fuente de verdad visual de PortraitOS.",
-
-                actions: `
-
-                    <button
-
-                        type="button"
-
-                        class="secondary"
-
-                        data-action="open-profile-import"
-
-                    >
-
-                        Importar perfil
-
-                    </button>
-
-                `
-
-            })}
-
-            <section
-
-                class="info-panel"
-
-                aria-label="Recomendación"
-
-            >
-
-                <div
-
-                    class="info-panel__icon"
-
-                    aria-hidden="true"
-
-                >
-
-                    i
-
-                </div>
-
-                <div>
-
-                    <strong>
-
-                        La calidad de la referencia determina la fidelidad.
-
-                    </strong>
-
-                    <p>
-
-                        Utiliza fotografías recientes, sin filtros,
-                        con buena luz y ángulos complementarios.
-                        Incluye al menos una vista frontal.
-
-                    </p>
-
-                </div>
-
-            </section>
-
-            <label
-
-                class="photo-upload"
-
-                for="portraitPhotoInput"
-
-                data-photo-dropzone
-
-            >
-
-                <span
-
-                    class="photo-upload__icon"
-
-                    aria-hidden="true"
-
-                >
-
-                    +
-
-                </span>
-
-                <strong>
-
-                    Añadir fotografías
-
-                </strong>
-
-                <p>
-
-                    Arrastra las imágenes hasta aquí
-                    o selecciónalas desde el equipo.
-
-                </p>
-
-                <small>
-
-                    JPG, PNG o WEBP.
-                    Máximo recomendado: 10 MB por archivo.
-
-                </small>
-
-                <input
-
-                    id="portraitPhotoInput"
-
-                    type="file"
-
-                    accept="image/jpeg,image/png,image/webp"
-
-                    multiple
-
-                    hidden
-
-                    data-action="add-photos"
-
-                >
-
-            </label>
-
-            ${
-                photos.length
-
-                    ? renderPhotoGallery(
-
-                        photos,
-
-                        primaryPhotoId
-
-                    )
-
-                    : renderPhotoEmptyState()
-            }
-
-        `;
-
-    }
-
-
-    function renderPhotoGallery(
-
-        photos,
-
-        primaryPhotoId
-
-    ) {
-
-        return `
-
-            <section
-
-                class="photo-gallery"
-
-                aria-label="Fotografías añadidas"
-
-            >
-
-                ${photos
-
-                    .map(photo =>
-
-                        renderPhotoCard(
-
-                            photo,
-
-                            primaryPhotoId
-
-                        )
-
-                    )
-
-                    .join("")}
-
-            </section>
-
-        `;
-
-    }
-
-
-    function renderPhotoCard(
-
-        photo,
-
-        primaryPhotoId
-
-    ) {
-
-        const isPrimary =
-            photo.id ===
-            primaryPhotoId;
-
-        const preview =
-
-            photo.previewUrl ||
-
-            photo.dataUrl ||
-
-            photo.objectUrl ||
-
-            "";
-
-        return `
-
-            <article
-
-                class="photo-card ${
-                    isPrimary
-                        ? "primary-photo"
-                        : ""
-                }"
-
-                data-photo-id="${escapeAttribute(
-                    photo.id
-                )}"
-
-            >
-
-                ${
-                    isPrimary
-
-                        ? `
-
-                            <span class="photo-card__badge">
-
-                                Referencia principal
-
-                            </span>
-
-                        `
-
-                        : ""
+            );
+        } catch (error) {
+            handleError(
+                error,
+                {
+                    action:
+                        "save-profile"
                 }
+            );
+        } finally {
+            setBusy(false);
+        }
+    }
 
-                <div class="photo-card__preview">
+    async function handleGenerate() {
+        try {
+            setBusy(
+                true,
+                "Generando contrato..."
+            );
 
-                    ${
-                        preview
+            const profile =
+                ProfileService
+                    .getActive();
 
-                            ? `
-
-                                <img
-
-                                    src="${escapeAttribute(
-                                        preview
-                                    )}"
-
-                                    alt="Fotografía de referencia ${escapeAttribute(
-                                        photo.name || ""
-                                    )}"
-
-                                >
-
-                            `
-
-                            : renderPhotoPlaceholder()
+            const result =
+                PromptEngine.generate(
+                    profile,
+                    {
+                        strict: true
                     }
-
-                </div>
-
-                <footer class="photo-card__footer">
-
-                    <span
-
-                        class="photo-card__name"
-
-                        title="${escapeAttribute(
-                            photo.name ||
-                            "Fotografía"
-                        )}"
-
-                    >
-
-                        ${escapeHTML(
-
-                            photo.name ||
-
-                            "Fotografía"
-
-                        )}
-
-                    </span>
-
-                    <div class="photo-card__actions">
-
-                        ${
-                            !isPrimary
-
-                                ? `
-
-                                    <button
-
-                                        type="button"
-
-                                        class="icon-button"
-
-                                        data-action="set-primary-photo"
-
-                                        data-photo-id="${escapeAttribute(
-                                            photo.id
-                                        )}"
-
-                                        title="Establecer como principal"
-
-                                        aria-label="Establecer como principal"
-
-                                    >
-
-                                        ★
-
-                                    </button>
-
-                                `
-
-                                : ""
-                        }
-
-                        <button
-
-                            type="button"
-
-                            class="icon-button"
-
-                            data-action="remove-photo"
-
-                            data-photo-id="${escapeAttribute(
-                                photo.id
-                            )}"
-
-                            title="Eliminar fotografía"
-
-                            aria-label="Eliminar fotografía"
-
-                        >
-
-                            ×
-
-                        </button>
-
-                    </div>
-
-                </footer>
-
-            </article>
-
-        `;
-
-    }
-
-
-    function renderPhotoPlaceholder() {
-
-        return `
-
-            <div
-
-                class="empty"
-
-                style="min-height:100%;padding:24px"
-
-            >
-
-                <span
-
-                    aria-hidden="true"
-
-                    style="font-size:32px"
-
-                >
-
-                    □
-
-                </span>
-
-                <small>
-
-                    Vista previa no almacenada
-
-                </small>
-
-            </div>
-
-        `;
-
-    }
-
-
-    function renderPhotoEmptyState() {
-
-        return `
-
-            <section
-
-                class="empty"
-
-                aria-label="Sin fotografías"
-
-            >
-
-                <div
-
-                    class="photo-upload__icon"
-
-                    aria-hidden="true"
-
-                >
-
-                    01
-
-                </div>
-
-                <div>
-
-                    <strong>
-
-                        Aún no hay referencias visuales.
-
-                    </strong>
-
-                    <p class="mt-2">
-
-                        Añade varias fotografías para
-                        construir una identidad más sólida.
-
-                    </p>
-
-                </div>
-
-            </section>
-
-        `;
-
-    }
-
-
-    /* =======================================================
-       IDENTITY CONTRACT
-       ======================================================= */
-
-    function renderIdentity(state) {
-
-        const contract =
-
-            state.profile
-                ?.identity
-                ?.contract ||
-
-            {};
-
-        const items =
-            Object.entries(
-                contract
-            );
-
-        const lockedCount =
-
-            items.filter(
-
-                ([, item]) =>
-
-                    item?.preserve !==
-                    false
-
-            ).length;
-
-        return `
-
-            ${renderStepHeader({
-
-                eyebrow:
-                    "Contrato de identidad",
-
-                title:
-                    "Identity Contract™",
-
-                description:
-                    "Confirma los rasgos que PortraitOS debe preservar. Cada protección activa se convierte en una cláusula explícita.",
-
-                actions: `
-
-                    <span class="selection-counter">
-
-                        <strong>
-
-                            ${lockedCount}
-
-                        </strong>
-
-                        de ${items.length}
-                        rasgos protegidos
-
-                    </span>
-
-                `
-
-            })}
-
-            <section
-
-                class="info-panel"
-
-                aria-label="Principio de identidad"
-
-            >
-
-                <div
-
-                    class="info-panel__icon"
-
-                    aria-hidden="true"
-
-                >
-
-                    ID
-
-                </div>
-
-                <div>
-
-                    <strong>
-
-                        La identidad no es una variable creativa.
-
-                    </strong>
-
-                    <p>
-
-                        La iluminación, el vestuario, el fondo,
-                        la pose o la cámara pueden evolucionar.
-                        Los rasgos personales deben permanecer.
-
-                    </p>
-
-                </div>
-
-            </section>
-
-            <section class="identity-grid">
-
-                ${items
-
-                    .map(([key, item]) =>
-
-                        renderIdentityCard(
-
-                            key,
-
-                            item
-
-                        )
-
-                    )
-
-                    .join("")}
-
-            </section>
-
-        `;
-
-    }
-
-
-    function renderIdentityCard(
-
-        key,
-
-        item = {}
-
-    ) {
-
-        const preserve =
-            item.preserve !== false;
-
-        const label =
-
-            item.label ||
-
-            humanizeKey(key);
-
-        return `
-
-            <article
-
-                class="identity-card ${
-                    preserve
-                        ? "locked"
-                        : ""
-                }"
-
-            >
-
-                <header class="identity-card__header">
-
-                    <div>
-
-                        <h2 class="identity-card__title">
-
-                            ${escapeHTML(
-                                label
-                            )}
-
-                        </h2>
-
-                        <p class="identity-card__description">
-
-                            ${
-                                preserve
-
-                                    ? "Protección activa: este rasgo debe mantenerse."
-
-                                    : "Protección desactivada."
-                            }
-
-                        </p>
-
-                    </div>
-
-                    <label class="switch">
-
-                        <input
-
-                            type="checkbox"
-
-                            data-action="toggle-identity-clause"
-
-                            data-contract-key="${escapeAttribute(
-                                key
-                            )}"
-
-                            ${
-                                preserve
-                                    ? "checked"
-                                    : ""
-                            }
-
-                            aria-label="Proteger ${escapeAttribute(
-                                label
-                            )}"
-
-                        >
-
-                        <span class="switch-control"></span>
-
-                    </label>
-
-                </header>
-
-                <textarea
-
-                    data-action="update-identity-notes"
-
-                    data-contract-key="${escapeAttribute(
-                        key
-                    )}"
-
-                    aria-label="Notas de ${escapeAttribute(
-                        label
-                    )}"
-
-                    placeholder="Añade una instrucción precisa..."
-
-                >${escapeHTML(
-                    item.notes || ""
-                )}</textarea>
-
-            </article>
-
-        `;
-
-    }
-
-
-    /* =======================================================
-       FACE LOCK
-       ======================================================= */
-
-    function renderFaceLock(state) {
-
-        const faceLock =
-
-            state.profile
-                ?.identity
-                ?.faceLock ||
-
-            {};
-
-        const value =
-            clamp(
-
-                Number(
-                    faceLock.value || 100
-                ),
-
-                70,
-
-                100
-
-            );
-
-        const circumference =
-            2 * Math.PI * 120;
-
-        const offset =
-
-            circumference *
-
-            (
-                1 -
-                value / 100
-            );
-
-        return `
-
-            ${renderStepHeader({
-
-                eyebrow:
-                    "Control de fidelidad",
-
-                title:
-                    "Face Lock™",
-
-                description:
-                    "Define la prioridad técnica de la fidelidad facial. La identidad siempre prevalece; este control ajusta el rigor de la instrucción."
-
-            })}
-
-            <section class="face-lock-layout">
-
-                <div
-
-                    class="face-lock-meter"
-
-                    aria-label="Nivel de Face Lock ${value}%"
-
-                >
-
-                    <svg
-
-                        viewBox="0 0 280 280"
-
-                        role="img"
-
-                        aria-hidden="true"
-
-                    >
-
-                        <circle
-
-                            class="face-lock-meter__track"
-
-                            cx="140"
-
-                            cy="140"
-
-                            r="120"
-
-                        ></circle>
-
-                        <circle
-
-                            class="face-lock-meter__progress"
-
-                            cx="140"
-
-                            cy="140"
-
-                            r="120"
-
-                            stroke-dasharray="${circumference}"
-
-                            stroke-dashoffset="${offset}"
-
-                        ></circle>
-
-                    </svg>
-
-                    <div class="face-lock-meter__content">
-
-                        <strong
-
-                            class="face-lock-meter__value"
-
-                            data-face-lock-value
-
-                        >
-
-                            ${value}%
-
-                        </strong>
-
-                        <span class="face-lock-meter__label">
-
-                            ${escapeHTML(
-                                getFaceLockLabel(
-                                    value
-                                )
-                            )}
-
-                        </span>
-
-                    </div>
-
-                </div>
-
-                <div class="face-lock-settings">
-
-                    <div class="card">
-
-                        <div class="field">
-
-                            <label for="faceLockRange">
-
-                                Fidelidad facial
-
-                            </label>
-
-                            <input
-
-                                id="faceLockRange"
-
-                                class="face-lock-slider"
-
-                                type="range"
-
-                                min="70"
-
-                                max="100"
-
-                                step="1"
-
-                                value="${value}"
-
-                                data-action="update-face-lock"
-
-                            >
-
-                        </div>
-
-                        <div class="divider mt-6 mb-6"></div>
-
-                        <span class="badge badge-success">
-
-                            Identidad prioritaria
-
-                        </span>
-
-                        <h2 class="card-title mt-4">
-
-                            ${escapeHTML(
-                                getFaceLockLabel(
-                                    value
-                                )
-                            )}
-
-                        </h2>
-
-                        <p class="card-description">
-
-                            ${escapeHTML(
-                                getFaceLockDescription(
-                                    value
-                                )
-                            )}
-
-                        </p>
-
-                    </div>
-
-                    <section
-
-                        class="info-panel"
-
-                        style="margin-bottom:0"
-
-                    >
-
-                        <div
-
-                            class="info-panel__icon"
-
-                            aria-hidden="true"
-
-                        >
-
-                            !
-
-                        </div>
-
-                        <div>
-
-                            <strong>
-
-                                No se permite rejuvenecer ni idealizar.
-
-                            </strong>
-
-                            <p>
-
-                                Face Lock no corrige a la persona.
-                                Impide que sus rasgos sean sustituidos
-                                por un rostro genérico o embellecido.
-
-                            </p>
-
-                        </div>
-
-                    </section>
-
-                </div>
-
-            </section>
-
-        `;
-
-    }
-
-
-    function getFaceLockLabel(value) {
-
-        if (
-            value >= 96
-        ) {
-
-            return "Máxima fidelidad";
-
-        }
-
-        if (
-            value >= 90
-        ) {
-
-            return "Fidelidad estricta";
-
-        }
-
-        if (
-            value >= 82
-        ) {
-
-            return "Fidelidad reforzada";
-
-        }
-
-        return "Fidelidad protegida";
-
-    }
-
-
-    function getFaceLockDescription(
-        value
-    ) {
-
-        if (
-            value >= 96
-        ) {
-
-            return "La identidad prevalece sobre cualquier decisión estética, editorial o fotográfica.";
-
-        }
-
-        if (
-            value >= 90
-        ) {
-
-            return "Se admite variación creativa únicamente cuando no modifica la lectura facial.";
-
-        }
-
-        if (
-            value >= 82
-        ) {
-
-            return "La composición puede ser más flexible, manteniendo intactos los rasgos esenciales.";
-
-        }
-
-        return "El sistema protege la identidad, aunque permite una dirección visual algo más abierta.";
-
-    }
-
-
-    /* =======================================================
-       OBJETIVO
-       ======================================================= */
-
-    function renderGoal(state) {
-
-        const selectedGoal =
-
-            state.profile
-                ?.direction
-                ?.goal ||
-
-            null;
-
-        return `
-
-            ${renderStepHeader({
-
-                eyebrow:
-                    "Dirección del retrato",
-
-                title:
-                    "Objetivo de publicación",
-
-                description:
-                    "Selecciona el uso principal. PortraitOS adaptará composición, vestuario, encuadre, iluminación y contexto sin alterar la identidad."
-
-            })}
-
-            <section
-
-                class="selection-grid"
-
-                aria-label="Objetivos disponibles"
-
-            >
-
-                ${GOAL_OPTIONS
-
-                    .map(option =>
-
-                        renderSelectionCard({
-
-                            option,
-
-                            selected:
-                                option.id ===
-                                selectedGoal,
-
-                            action:
-                                "select-goal",
-
-                            multi:
-                                false
-
-                        })
-
-                    )
-
-                    .join("")}
-
-            </section>
-
-            <div class="field mt-6">
-
-                <label for="directionNotes">
-
-                    Contexto adicional
-
-                </label>
-
-                <textarea
-
-                    id="directionNotes"
-
-                    data-action="update-direction-notes"
-
-                    placeholder="Ejemplo: candidatura interna, perfil de analista funcional o publicación para un artículo..."
-
-                >${escapeHTML(
-
-                    state.profile
-                        ?.direction
-                        ?.notes ||
-
-                    ""
-
-                )}</textarea>
-
-            </div>
-
-        `;
-
-    }
-
-
-    /* =======================================================
-       PERCEPCIÓN
-       ======================================================= */
-
-    function renderPerception(state) {
-
-        const selectedPerceptions =
-
-            Array.isArray(
-
-                state.profile
-                    ?.direction
-                    ?.perceptions
-
-            )
-
-                ? state.profile
-                    .direction
-                    .perceptions
-
-                : [];
-
-        return `
-
-            ${renderStepHeader({
-
-                eyebrow:
-                    "Lectura visual",
-
-                title:
-                    "Percepción deseada",
-
-                description:
-                    "Elige hasta tres cualidades. Son atributos de comunicación visual, no cambios físicos ni reinterpretaciones de la persona.",
-
-                actions: `
-
-                    <span class="selection-counter">
-
-                        <strong>
-
-                            ${selectedPerceptions.length}
-
-                        </strong>
-
-                        de 3 seleccionadas
-
-                    </span>
-
-                `
-
-            })}
-
-            <section
-
-                class="selection-grid"
-
-                aria-label="Percepciones disponibles"
-
-            >
-
-                ${PERCEPTION_OPTIONS
-
-                    .map(option =>
-
-                        renderSelectionCard({
-
-                            option,
-
-                            selected:
-
-                                selectedPerceptions
-                                    .includes(
-                                        option.id
-                                    ),
-
-                            action:
-                                "toggle-perception",
-
-                            multi:
-                                true
-
-                        })
-
-                    )
-
-                    .join("")}
-
-            </section>
-
-            <div class="field mt-6">
-
-                <label for="customPerception">
-
-                    Matiz personalizado
-
-                </label>
-
-                <input
-
-                    id="customPerception"
-
-                    type="text"
-
-                    value="${escapeAttribute(
-
-                        state.profile
-                            ?.direction
-                            ?.customPerception ||
-
-                        ""
-
-                    )}"
-
-                    data-action="update-custom-perception"
-
-                    placeholder="Ejemplo: autoridad serena, elegancia natural o solvencia técnica..."
-
-                >
-
-            </div>
-
-        `;
-
-    }
-
-
-    function renderSelectionCard({
-
-        option,
-
-        selected,
-
-        action,
-
-        multi
-
-    }) {
-
-        return `
-
-            <button
-
-                type="button"
-
-                class="selection-card ${
-                    selected
-                        ? "selected"
-                        : ""
-                }"
-
-                data-action="${escapeAttribute(
-                    action
-                )}"
-
-                data-value="${escapeAttribute(
-                    option.id
-                )}"
-
-                aria-pressed="${selected}"
-
-            >
-
-                <span
-
-                    class="selection-card__check"
-
-                    aria-hidden="true"
-
-                >
-
-                    ✓
-
-                </span>
-
-                <span
-
-                    class="selection-card__icon"
-
-                    aria-hidden="true"
-
-                >
-
-                    ${escapeHTML(
-                        option.icon
-                    )}
-
-                </span>
-
-                <span>
-
-                    <h3>
-
-                        ${escapeHTML(
-                            option.title
-                        )}
-
-                    </h3>
-
-                    <p>
-
-                        ${escapeHTML(
-                            option.description
-                        )}
-
-                    </p>
-
-                </span>
-
-                ${
-                    multi
-
-                        ? `
-
-                            <small class="text-muted">
-
-                                Selección múltiple
-
-                            </small>
-
-                        `
-
-                        : ""
-                }
-
-            </button>
-
-        `;
-
-    }
-
-
-    /* =======================================================
-       RESUMEN
-       ======================================================= */
-
-    function renderSummary(state) {
-
-        const profile =
-            state.profile || {};
-
-        const photos =
-            profile.identity?.photos || [];
-
-        const contractEntries =
-
-            Object.values(
-
-                profile.identity
-                    ?.contract ||
-
-                {}
-
-            );
-
-        const protectedCount =
-
-            contractEntries.filter(
-
-                item =>
-
-                    item?.preserve !==
-                    false
-
-            ).length;
-
-        const goal =
-
-            GOAL_OPTIONS.find(
-
-                item =>
-
-                    item.id ===
-                    profile.direction?.goal
-
-            );
-
-        const perceptions =
-
-            PERCEPTION_OPTIONS.filter(
-
-                item =>
-
-                    (
-                        profile.direction
-                            ?.perceptions ||
-
-                        []
-                    )
-
-                        .includes(
-                            item.id
-                        )
-
-            );
-
-        const promptText =
-
-            profile.prompt
-                ?.compiledText ||
-
-            buildPromptPreview(
-
-                profile,
-
-                goal,
-
-                perceptions
-
-            );
-
-        return `
-
-            ${renderStepHeader({
-
-                eyebrow:
-                    "Compilación final",
-
-                title:
-                    "Resumen del retrato",
-
-                description:
-                    "Revisa el contrato de identidad y la dirección visual antes de copiar o exportar la especificación.",
-
-                actions: `
-
-                    <button
-
-                        type="button"
-
-                        class="secondary"
-
-                        data-action="export-profile"
-
-                    >
-
-                        Exportar perfil
-
-                    </button>
-
-                    <button
-
-                        type="button"
-
-                        class="primary"
-
-                        data-action="compile-prompt"
-
-                    >
-
-                        Compilar
-
-                    </button>
-
-                `
-
-            })}
-
-            <section class="summary-grid">
-
-                ${renderSummaryCard(
-
-                    "Referencias",
-
-                    String(
-                        photos.length
-                    ),
-
-                    photos.length === 1
-
-                        ? "Una fotografía cargada"
-
-                        : `${photos.length} fotografías cargadas`
-
-                )}
-
-                ${renderSummaryCard(
-
-                    "Identity Contract",
-
-                    `${protectedCount}/${contractEntries.length}`,
-
-                    "Rasgos protegidos"
-
-                )}
-
-                ${renderSummaryCard(
-
-                    "Face Lock",
-
-                    `${profile.identity
-                        ?.faceLock
-                        ?.value || 100}%`,
-
-                    getFaceLockLabel(
-
-                        profile.identity
-                            ?.faceLock
-                            ?.value ||
-
-                        100
-
-                    )
-
-                )}
-
-                ${renderSummaryCard(
-
-                    "Objetivo",
-
-                    goal?.title ||
-
-                    "Sin seleccionar",
-
-                    goal?.description ||
-
-                    "Pendiente de definición"
-
-                )}
-
-                ${renderSummaryCard(
-
-                    "Percepción",
-
-                    perceptions.length
-
-                        ? perceptions
-
-                            .map(
-                                item =>
-                                    item.title
-                            )
-
-                            .join(", ")
-
-                        : "Sin seleccionar",
-
-                    profile.direction
-                        ?.customPerception ||
-
-                    "Sin matiz adicional"
-
-                )}
-
-                ${renderSummaryCard(
-
-                    "Estado",
-
-                    profile.metadata
-                        ?.status ===
-                        "ready"
-
-                        ? "Preparado"
-
-                        : "Borrador",
-
-                    `Actualizado ${formatDate(
-
-                        profile.metadata
-                            ?.updatedAt
-
-                    )}`
-
-                )}
-
-            </section>
-
-            <section class="prompt-panel">
-
-                <header class="prompt-panel__header">
-
-                    <span class="prompt-panel__title">
-
-                        Especificación PortraitOS
-
-                    </span>
-
-                    <div class="prompt-panel__actions">
-
-                        <button
-
-                            type="button"
-
-                            class="ghost"
-
-                            data-action="copy-prompt"
-
-                        >
-
-                            Copiar
-
-                        </button>
-
-                    </div>
-
-                </header>
-
-                <textarea
-
-                    readonly
-
-                    spellcheck="false"
-
-                    data-prompt-output
-
-                    aria-label="Especificación compilada"
-
-                >${escapeHTML(
-                    promptText
-                )}</textarea>
-
-            </section>
-
-        `;
-
-    }
-
-
-    function renderSummaryCard(
-
-        label,
-
-        value,
-
-        detail
-
-    ) {
-
-        return `
-
-            <article class="summary-card">
-
-                <span class="summary-card__label">
-
-                    ${escapeHTML(
-                        label
-                    )}
-
-                </span>
-
-                <div class="summary-card__value">
-
-                    ${escapeHTML(
-                        value
-                    )}
-
-                </div>
-
-                <p class="summary-card__detail">
-
-                    ${escapeHTML(
-                        detail
-                    )}
-
-                </p>
-
-            </article>
-
-        `;
-
-    }
-
-
-    function buildPromptPreview(
-
-        profile,
-
-        goal,
-
-        perceptions
-
-    ) {
-
-        const clauses =
-
-            Object.values(
-
-                profile.identity
-                    ?.contract ||
-
-                {}
-
-            )
-
-                .filter(
-
-                    item =>
-
-                        item?.preserve !==
-                        false
-
-                )
-
-                .map(
-
-                    item =>
-
-                        `- ${item.label}: ${item.notes}`
-
-                )
-
-                .join("\n");
-
-        const perceptionText =
-
-            perceptions.length
-
-                ? perceptions
-
-                    .map(
-                        item =>
-                            item.title
-                    )
-
-                    .join(", ")
-
-                : "Pendiente de definir";
-
-        return [
-
-            "PORTRAITOS — ESPECIFICACIÓN DE RETRATO",
-
-            "",
-
-            "PRINCIPIO CENTRAL",
-
-            "La identidad de la persona debe conservarse de forma estricta. La creatividad solo puede aplicarse a iluminación, vestuario, composición, pose, fondo y cámara.",
-
-            "",
-
-            "IDENTITY CONTRACT",
-
-            clauses ||
-
-            "- Contrato pendiente de completar.",
-
-            "",
-
-            `FACE LOCK: ${
-                profile.identity
-                    ?.faceLock
-                    ?.value ||
-
-                100
-            }%`,
-
-            "",
-
-            `OBJETIVO: ${
-                goal?.title ||
-                "Pendiente de seleccionar"
-            }`,
-
-            `PERCEPCIÓN: ${perceptionText}`,
-
-            profile.direction
-                ?.customPerception
-
-                ? `MATIZ: ${profile.direction.customPerception}`
-
-                : "",
-
-            profile.direction
-                ?.notes
-
-                ? `CONTEXTO: ${profile.direction.notes}`
-
-                : "",
-
-            "",
-
-            "RESTRICCIONES",
-
-            "- No rejuvenecer.",
-
-            "- No idealizar ni sustituir rasgos.",
-
-            "- No alisar ni plastificar la textura de la piel.",
-
-            "- No modificar edad, arrugas, canas, proporciones faciales, nariz, ojos, mandíbula, dentadura, barba ni asimetrías.",
-
-            "- La imagen final debe parecer inequívocamente la misma persona."
-
-        ]
-
-            .filter(
-                line =>
-                    line !== ""
-            )
-
-            .join("\n");
-
-    }
-
-
-    function renderUnknownStep(
-        routeId
-    ) {
-
-        return `
-
-            ${renderStepHeader({
-
-                eyebrow:
-                    "PortraitOS",
-
-                title:
-                    "Paso no disponible",
-
-                description:
-                    "La ruta solicitada no está definida en esta versión."
-
-            })}
-
-            <section class="empty">
-
-                <strong>
-
-                    Ruta desconocida
-
-                </strong>
-
-                <p>
-
-                    ${escapeHTML(
-                        routeId
-                    )}
-
-                </p>
-
-            </section>
-
-        `;
-
-    }
-
-
-    /* =======================================================
-       PROGRESO
-       ======================================================= */
-
-    function renderProgress(state) {
-
-        const currentStep =
-            Number(
-                state.currentStep || 0
-            );
-
-        const totalSteps =
-            Number(
-                state.totalSteps || 1
-            );
-
-        const percentage =
-            clamp(
-
-                (
-                    (
-                        currentStep + 1
-                    ) /
-
-                    totalSteps
-                ) * 100,
-
-                0,
-
-                100
-
-            );
-
-        if (
-            elements.progressFill
-        ) {
-
-            elements.progressFill
-                .style
-                .width =
-                `${percentage}%`;
-
-            elements.progressFill
-                .setAttribute(
-
-                    "aria-valuenow",
-
-                    String(
-                        Math.round(
-                            percentage
-                        )
-                    )
-
                 );
 
-        }
-
-        if (
-            elements.stepCounter
-        ) {
-
-            elements.stepCounter
-                .textContent =
-
-                `Paso ${currentStep + 1} de ${totalSteps}`;
-
-        }
-
-    }
-
-
-    function updateButtons(state) {
-
-        const currentStep =
-            Number(
-                state.currentStep || 0
-            );
-
-        const totalSteps =
-            Number(
-                state.totalSteps || 1
-            );
-
-        const isFirst =
-            currentStep === 0;
-
-        const isLast =
-            currentStep ===
-            totalSteps - 1;
-
-        const canContinue =
-            state.validation
-                ?.valid !== false;
-
-        if (
-            elements.previousButton
-        ) {
-
-            elements.previousButton
-                .disabled =
-                isFirst;
-
-            elements.previousButton
-                .hidden =
-                isFirst;
-
-        }
-
-        if (
-            elements.nextButton
-        ) {
-
-            elements.nextButton
-                .disabled =
-                !canContinue;
-
-            elements.nextButton
-                .textContent =
-
-                isLast
-
-                    ? "Finalizar"
-
-                    : "Continuar";
-
-            elements.nextButton
-                .dataset
-                .action =
-
-                isLast
-
-                    ? "finish"
-
-                    : "next";
-
-        }
-
-    }
-
-
-    /* =======================================================
-       EVENTOS
-       ======================================================= */
-
-    function handleDocumentClick(
-        event
-    ) {
-
-        const routeElement =
-
-            event.target.closest(
-                "[data-route]"
-            );
-
-        if (
-            routeElement &&
-            !routeElement.disabled
-        ) {
-
-            emitUIEvent(
-
-                "navigate",
-
+            emit(
+                "prompt:generated",
                 {
-
-                    routeId:
-                        routeElement
-                            .dataset
-                            .route,
-
-                    step:
-                        Number(
-
-                            routeElement
-                                .dataset
-                                .step
-
-                        )
-
+                    result
                 }
-
             );
 
-            return;
+            notify(
+                "Contrato de retrato generado.",
+                {
+                    type:
+                        "success"
+                }
+            );
 
+            renderPromptResult(result);
+        } catch (error) {
+            handleError(
+                error,
+                {
+                    action:
+                        "generate-prompt"
+                }
+            );
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    function handleKeyboard(event) {
+        if (
+            event.defaultPrevented ||
+            isEditableElement(
+                event.target
+            )
+        ) {
+            return;
         }
 
-        const actionElement =
+        if (
+            event.altKey &&
+            event.key ===
+                "ArrowRight"
+        ) {
+            event.preventDefault();
+            handleNext();
+        }
 
+        if (
+            event.altKey &&
+            event.key ===
+                "ArrowLeft"
+        ) {
+            event.preventDefault();
+            handlePrevious();
+        }
+
+        if (
+            event.key ===
+                "Escape"
+        ) {
+            closeModal();
+        }
+    }
+
+    function handleGlobalActions(event) {
+        const actionElement =
             event.target.closest(
                 "[data-action]"
             );
 
         if (!actionElement) {
-
             return;
-
         }
 
         const action =
-            actionElement
-                .dataset
+            actionElement.dataset
                 .action;
 
         switch (action) {
-
-            case "previous":
-
-                emitUIEvent(
-                    "previous"
+            case "notification-dismiss":
+                dismissNotification(
+                    actionElement.closest(
+                        "[data-notification]"
+                    )
                 );
-
                 break;
 
-            case "next":
-
-                emitUIEvent(
-                    "next"
-                );
-
-                break;
-
-            case "finish":
-
-                emitUIEvent(
-                    "finish"
-                );
-
-                break;
-
-            case "set-primary-photo":
-
-                emitUIEvent(
-
-                    "set-primary-photo",
-
-                    {
-
-                        photoId:
-
-                            actionElement
-                                .dataset
-                                .photoId
-
-                    }
-
-                );
-
-                break;
-
-            case "remove-photo":
-
-                confirmPhotoRemoval(
-
-                    actionElement
-                        .dataset
-                        .photoId
-
-                );
-
-                break;
-
-            case "select-goal":
-
-                emitUIEvent(
-
-                    "select-goal",
-
-                    {
-
-                        value:
-
-                            actionElement
-                                .dataset
-                                .value
-
-                    }
-
-                );
-
-                break;
-
-            case "toggle-perception":
-
-                emitUIEvent(
-
-                    "toggle-perception",
-
-                    {
-
-                        value:
-
-                            actionElement
-                                .dataset
-                                .value
-
-                    }
-
-                );
-
-                break;
-
-            case "compile-prompt":
-
-                emitUIEvent(
-                    "compile-prompt"
-                );
-
+            case "modal-close":
+                closeModal();
                 break;
 
             case "copy-prompt":
-
-                copyPromptToClipboard();
-
+                copyPrompt();
                 break;
 
-            case "export-profile":
-
-                emitUIEvent(
-                    "export-profile"
-                );
-
-                break;
-
-            case "open-profile-import":
-
-                openImportDialog();
-
-                break;
-
-            case "modal-cancel":
-
-                closeModal();
-
-                break;
-
-            case "modal-confirm":
-
-                executeModalConfirmation();
-
+            case "download-profile":
+                ProfileService
+                    .download();
                 break;
 
             default:
-
                 break;
-
         }
-
     }
 
-
-    function handleDocumentChange(
-        event
-    ) {
-
-        const target =
-            event.target;
-
-        const action =
-            target.dataset.action;
-
-        switch (action) {
-
-            case "add-photos":
-
-                emitUIEvent(
-
-                    "add-photos",
-
-                    {
-
-                        files:
-
-                            Array.from(
-
-                                target.files ||
-                                []
-
-                            )
-
-                    }
-
-                );
-
-                target.value = "";
-
-                break;
-
-            case "toggle-identity-clause":
-
-                emitUIEvent(
-
-                    "toggle-identity-clause",
-
-                    {
-
-                        key:
-
-                            target.dataset
-                                .contractKey,
-
-                        preserve:
-
-                            target.checked
-
-                    }
-
-                );
-
-                break;
-
-            case "update-face-lock":
-
-                emitUIEvent(
-
-                    "update-face-lock",
-
-                    {
-
-                        value:
-
-                            Number(
-                                target.value
-                            )
-
-                    }
-
-                );
-
-                break;
-
-            case "import-profile-file":
-
-                emitUIEvent(
-
-                    "import-profile-file",
-
-                    {
-
-                        file:
-
-                            target.files?.[0] ||
-
-                            null
-
-                    }
-
-                );
-
-                closeModal();
-
-                break;
-
-            default:
-
-                break;
-
-        }
-
-    }
-
-
-    function handleDocumentInput(
-        event
-    ) {
-
-        const target =
-            event.target;
-
-        const action =
-            target.dataset.action;
-
-        switch (action) {
-
-            case "update-identity-notes":
-
-                emitUIEvent(
-
-                    "update-identity-notes",
-
-                    {
-
-                        key:
-
-                            target.dataset
-                                .contractKey,
-
-                        notes:
-
-                            target.value
-
-                    }
-
-                );
-
-                break;
-
-            case "update-face-lock":
-
-                updateFaceLockPreview(
-
-                    Number(
-                        target.value
-                    )
-
-                );
-
-                emitUIEvent(
-
-                    "update-face-lock",
-
-                    {
-
-                        value:
-
-                            Number(
-                                target.value
-                            )
-
-                    }
-
-                );
-
-                break;
-
-            case "update-direction-notes":
-
-                emitUIEvent(
-
-                    "update-direction-notes",
-
-                    {
-
-                        value:
-
-                            target.value
-
-                    }
-
-                );
-
-                break;
-
-            case "update-custom-perception":
-
-                emitUIEvent(
-
-                    "update-custom-perception",
-
-                    {
-
-                        value:
-
-                            target.value
-
-                    }
-
-                );
-
-                break;
-
-            default:
-
-                break;
-
-        }
-
-    }
-
-
-    function handleDocumentKeydown(
-        event
-    ) {
-
+    /* ========================================================
+       EVENTOS DE APLICACIÓN
+       ======================================================== */
+
+    function bindApplicationEvents() {
         if (
-            event.key === "Escape" &&
-            activeModal
+            !window.AppEvents ||
+            typeof AppEvents.on !==
+                "function"
         ) {
-
-            closeModal();
-
+            return;
         }
 
-    }
+        subscriptions.push(
+            AppEvents.on(
+                "wizard:changed",
+                render
+            )
+        );
 
+        subscriptions.push(
+            AppEvents.on(
+                "wizard:step-completed",
+                render
+            )
+        );
 
-    function emitUIEvent(
-
-        name,
-
-        detail = {}
-
-    ) {
-
-        window.dispatchEvent(
-
-            new CustomEvent(
-
-                `portraitos:ui:${name}`,
-
-                {
-
-                    detail
-
+        subscriptions.push(
+            AppEvents.on(
+                "wizard:validation-failed",
+                detail => {
+                    showValidation(
+                        detail.validation
+                    );
                 }
-
             )
-
         );
 
-    }
-
-
-    /* =======================================================
-       DRAG AND DROP
-       ======================================================= */
-
-    function handleDragOver(event) {
-
-        const dropzone =
-
-            event.target.closest(
-                "[data-photo-dropzone]"
-            );
-
-        if (!dropzone) {
-
-            return;
-
-        }
-
-        event.preventDefault();
-
-        dropzone.classList.add(
-            "drag-over"
-        );
-
-    }
-
-
-    function handleDragLeave(event) {
-
-        const dropzone =
-
-            event.target.closest(
-                "[data-photo-dropzone]"
-            );
-
-        if (!dropzone) {
-
-            return;
-
-        }
-
-        dropzone.classList.remove(
-            "drag-over"
-        );
-
-    }
-
-
-    function handleDrop(event) {
-
-        const dropzone =
-
-            event.target.closest(
-                "[data-photo-dropzone]"
-            );
-
-        if (!dropzone) {
-
-            return;
-
-        }
-
-        event.preventDefault();
-
-        dropzone.classList.remove(
-            "drag-over"
-        );
-
-        const files =
-
-            Array.from(
-
-                event.dataTransfer
-                    ?.files ||
-
-                []
-
-            )
-
-                .filter(
-
-                    file =>
-
-                        file.type
-                            .startsWith(
-                                "image/"
-                            )
-
-                );
-
-        if (
-            files.length
-        ) {
-
-            emitUIEvent(
-
-                "add-photos",
-
-                {
-
-                    files
-
+        subscriptions.push(
+            AppEvents.on(
+                "ui:notification",
+                detail => {
+                    notify(
+                        detail.message,
+                        detail
+                    );
                 }
-
-            );
-
-        }
-
-    }
-
-
-    /* =======================================================
-       FACE LOCK PREVIEW
-       ======================================================= */
-
-    function updateFaceLockPreview(
-        value
-    ) {
-
-        const safeValue =
-            clamp(
-                value,
-                70,
-                100
-            );
-
-        const valueElement =
-
-            document.querySelector(
-                "[data-face-lock-value]"
-            );
-
-        const labelElement =
-
-            document.querySelector(
-                ".face-lock-meter__label"
-            );
-
-        const progressCircle =
-
-            document.querySelector(
-                ".face-lock-meter__progress"
-            );
-
-        const titleElement =
-
-            document.querySelector(
-                ".face-lock-settings .card-title"
-            );
-
-        const descriptionElement =
-
-            document.querySelector(
-                ".face-lock-settings .card-description"
-            );
-
-        if (
-            valueElement
-        ) {
-
-            valueElement.textContent =
-                `${safeValue}%`;
-
-        }
-
-        if (
-            labelElement
-        ) {
-
-            labelElement.textContent =
-
-                getFaceLockLabel(
-                    safeValue
-                );
-
-        }
-
-        if (
-            progressCircle
-        ) {
-
-            const circumference =
-                2 * Math.PI * 120;
-
-            const offset =
-
-                circumference *
-
-                (
-                    1 -
-                    safeValue / 100
-                );
-
-            progressCircle
-                .style
-                .strokeDashoffset =
-                String(offset);
-
-        }
-
-        if (
-            titleElement
-        ) {
-
-            titleElement.textContent =
-
-                getFaceLockLabel(
-                    safeValue
-                );
-
-        }
-
-        if (
-            descriptionElement
-        ) {
-
-            descriptionElement
-                .textContent =
-
-                getFaceLockDescription(
-                    safeValue
-                );
-
-        }
-
-    }
-
-
-    /* =======================================================
-       TOASTS
-       ======================================================= */
-
-    function showToast({
-
-        title = "PortraitOS",
-
-        message = "",
-
-        type = "success",
-
-        duration = 3500
-
-    } = {}) {
-
-        initialize();
-
-        const id =
-
-            `portrait-toast-${++toastSequence}`;
-
-        const toast =
-
-            document.createElement(
-                "div"
-            );
-
-        toast.id = id;
-
-        toast.className =
-
-            `toast ${normalizeToastType(
-                type
-            )}`;
-
-        toast.setAttribute(
-
-            "role",
-
-            type === "error"
-
-                ? "alert"
-
-                : "status"
-
-        );
-
-        toast.innerHTML = `
-
-            <div class="toast__content">
-
-                <strong class="toast__title">
-
-                    ${escapeHTML(
-                        title
-                    )}
-
-                </strong>
-
-                ${
-                    message
-
-                        ? `
-
-                            <p class="toast__message">
-
-                                ${escapeHTML(
-                                    message
-                                )}
-
-                            </p>
-
-                        `
-
-                        : ""
-                }
-
-            </div>
-
-            <button
-
-                type="button"
-
-                class="ghost"
-
-                aria-label="Cerrar notificación"
-
-                data-toast-close
-
-            >
-
-                ×
-
-            </button>
-
-        `;
-
-        elements.toastContainer
-            .appendChild(
-                toast
-            );
-
-        toast
-
-            .querySelector(
-                "[data-toast-close]"
             )
-
-            ?.addEventListener(
-
-                "click",
-
-                () =>
-
-                    removeToast(
-                        toast
-                    )
-
-            );
-
-        if (
-            duration > 0
-        ) {
-
-            window.setTimeout(
-
-                () =>
-
-                    removeToast(
-                        toast
-                    ),
-
-                duration
-
-            );
-
-        }
-
-        return id;
-
-    }
-
-
-    function removeToast(toast) {
-
-        if (
-            !toast?.isConnected
-        ) {
-
-            return;
-
-        }
-
-        toast.style.opacity =
-            "0";
-
-        toast.style.transform =
-            "translateX(16px)";
-
-        window.setTimeout(
-
-            () =>
-
-                toast.remove(),
-
-            180
-
         );
 
-    }
-
-
-    function normalizeToastType(
-        type
-    ) {
-
-        return [
-
-            "success",
-
-            "warning",
-
-            "error"
-
-        ].includes(type)
-
-            ? type
-
-            : "success";
-
-    }
-
-
-    /* =======================================================
-       LOADING
-       ======================================================= */
-
-    function showLoading(
-
-        message =
-            "Procesando..."
-
-    ) {
-
-        initialize();
-
-        loadingCount += 1;
-
-        let overlay =
-
-            document.querySelector(
-                ".loading-overlay"
-            );
-
-        if (!overlay) {
-
-            overlay =
-
-                document.createElement(
-                    "div"
-                );
-
-            overlay.className =
-                "loading-overlay";
-
-            overlay.setAttribute(
-                "role",
-                "status"
-            );
-
-            overlay.innerHTML = `
-
-                <div style="text-align:center">
-
-                    <div
-
-                        class="spinner"
-
-                        aria-hidden="true"
-
-                    ></div>
-
-                    <p
-
-                        class="mt-4 text-secondary"
-
-                        data-loading-message
-
-                    ></p>
-
-                </div>
-
-            `;
-
-            elements.workspace
-                .style
-                .position =
-                "relative";
-
-            elements.workspace
-                .appendChild(
-                    overlay
-                );
-
-        }
-
-        const messageElement =
-
-            overlay.querySelector(
-                "[data-loading-message]"
-            );
-
-        if (
-            messageElement
-        ) {
-
-            messageElement.textContent =
-                message;
-
-        }
-
-    }
-
-
-    function hideLoading(
-
-        force = false
-
-    ) {
-
-        loadingCount =
-
-            force
-
-                ? 0
-
-                : Math.max(
-
-                    0,
-
-                    loadingCount - 1
-
-                );
-
-        if (
-            loadingCount > 0
-        ) {
-
-            return;
-
-        }
-
-        document
-
-            .querySelector(
-                ".loading-overlay"
-            )
-
-            ?.remove();
-
-    }
-
-
-    /* =======================================================
-       MODALES
-       ======================================================= */
-
-    function openModal({
-
-        title = "Confirmación",
-
-        body = "",
-
-        confirmText = "Confirmar",
-
-        cancelText = "Cancelar",
-
-        danger = false,
-
-        onConfirm = null,
-
-        showCancel = true
-
-    } = {}) {
-
-        closeModal();
-
-        const backdrop =
-
-            document.createElement(
-                "div"
-            );
-
-        backdrop.className =
-            "modal-backdrop";
-
-        backdrop.innerHTML = `
-
-            <section
-
-                class="modal"
-
-                role="dialog"
-
-                aria-modal="true"
-
-                aria-labelledby="portraitModalTitle"
-
-            >
-
-                <header class="modal__header">
-
-                    <h2
-
-                        id="portraitModalTitle"
-
-                        class="modal__title"
-
-                    >
-
-                        ${escapeHTML(
-                            title
-                        )}
-
-                    </h2>
-
-                    <button
-
-                        type="button"
-
-                        class="icon-button"
-
-                        data-action="modal-cancel"
-
-                        aria-label="Cerrar"
-
-                    >
-
-                        ×
-
-                    </button>
-
-                </header>
-
-                <div class="modal__body">
-
-                    ${body}
-
-                </div>
-
-                <footer class="modal__footer">
-
-                    ${
-                        showCancel
-
-                            ? `
-
-                                <button
-
-                                    type="button"
-
-                                    class="secondary"
-
-                                    data-action="modal-cancel"
-
-                                >
-
-                                    ${escapeHTML(
-                                        cancelText
-                                    )}
-
-                                </button>
-
-                            `
-
-                            : ""
-                    }
-
-                    <button
-
-                        type="button"
-
-                        class="${
-                            danger
-                                ? "danger"
-                                : "primary"
-                        }"
-
-                        data-action="modal-confirm"
-
-                    >
-
-                        ${escapeHTML(
-                            confirmText
-                        )}
-
-                    </button>
-
-                </footer>
-
-            </section>
-
-        `;
-
-        backdrop.addEventListener(
-
-            "click",
-
-            event => {
-
-                if (
-                    event.target ===
-                    backdrop
-                ) {
-
-                    closeModal();
-
-                }
-
-            }
-
-        );
-
-        activeModal = {
-
-            element:
-                backdrop,
-
-            onConfirm
-
-        };
-
-        document.body.appendChild(
-            backdrop
-        );
-
-        backdrop
-
-            .querySelector(
-                "button, input, textarea, select"
-            )
-
-            ?.focus();
-
-    }
-
-
-    function closeModal() {
-
-        if (!activeModal) {
-
-            return;
-
-        }
-
-        activeModal
-            .element
-            ?.remove();
-
-        activeModal = null;
-
-    }
-
-
-    function executeModalConfirmation() {
-
-        const callback =
-            activeModal?.onConfirm;
-
-        closeModal();
-
-        if (
-            typeof callback ===
-            "function"
-        ) {
-
-            callback();
-
-        }
-
-    }
-
-
-    function confirmPhotoRemoval(
-        photoId
-    ) {
-
-        openModal({
-
-            title:
-                "Eliminar fotografía",
-
-            body: `
-
-                <p>
-
-                    La fotografía dejará de formar parte
-                    del conjunto de referencias de identidad.
-
-                </p>
-
-            `,
-
-            confirmText:
-                "Eliminar",
-
-            cancelText:
-                "Conservar",
-
-            danger:
-                true,
-
-            onConfirm:
-                () => {
-
-                    emitUIEvent(
-
-                        "remove-photo",
-
+        subscriptions.push(
+            AppEvents.on(
+                "app:error",
+                detail => {
+                    notify(
+                        detail.message,
                         {
-
-                            photoId
-
+                            type:
+                                "error",
+                            title:
+                                "Error"
                         }
+                    );
+                }
+            )
+        );
 
+        subscriptions.push(
+            AppEvents.on(
+                "profile:loaded",
+                render
+            )
+        );
+
+        subscriptions.push(
+            AppEvents.on(
+                "profile:updated",
+                render
+            )
+        );
+    }
+
+    /* ========================================================
+       RENDER PRINCIPAL
+       ======================================================== */
+
+    function render() {
+        if (!window.Wizard) {
+            return;
+        }
+
+        const state =
+            Wizard.getState();
+
+        const current =
+            Wizard.getCurrentStep();
+
+        const progress =
+            Wizard.getProgress();
+
+        renderWizardNavigation(
+            state
+        );
+
+        renderStepPanels(
+            current?.id
+        );
+
+        renderProgress(
+            progress
+        );
+
+        renderStepHeader(
+            current
+        );
+
+        renderActions(
+            state,
+            current
+        );
+
+        renderProfileSummary();
+    }
+
+    function renderWizardNavigation(
+        state
+    ) {
+        elements.wizardSteps
+            .forEach(
+                element => {
+                    const stepId =
+                        element.dataset
+                            .wizardStep;
+
+                    toggleClass(
+                        element,
+                        CLASSES.ACTIVE,
+                        stepId ===
+                        state.currentStepId
                     );
 
+                    toggleClass(
+                        element,
+                        CLASSES.COMPLETE,
+                        state.completedSteps
+                            .includes(stepId)
+                    );
+
+                    toggleClass(
+                        element,
+                        CLASSES.INVALID,
+                        state.invalidSteps
+                            .includes(stepId)
+                    );
+
+                    toggleClass(
+                        element,
+                        CLASSES.VISITED,
+                        state.visitedSteps
+                            .includes(stepId)
+                    );
+
+                    element.setAttribute(
+                        "aria-current",
+                        stepId ===
+                        state.currentStepId
+                            ? "step"
+                            : "false"
+                    );
                 }
-
-        });
-
+            );
     }
 
+    function renderStepPanels(
+        currentStepId
+    ) {
+        elements.stepPanels
+            .forEach(
+                panel => {
+                    const panelStep =
+                        panel.dataset
+                            .stepPanel;
 
-    function openImportDialog() {
+                    const active =
+                        panelStep ===
+                        currentStepId;
 
-        openModal({
+                    toggleClass(
+                        panel,
+                        CLASSES.ACTIVE,
+                        active
+                    );
 
-            title:
-                "Importar perfil PortraitOS",
+                    panel.hidden =
+                        !active;
 
-            body: `
+                    panel.setAttribute(
+                        "aria-hidden",
+                        String(!active)
+                    );
+                }
+            );
+    }
 
-                <div class="field">
+    function renderProgress(
+        progress
+    ) {
+        if (
+            elements.progress
+        ) {
+            const percentage =
+                Number(
+                    progress.percentage ||
+                    0
+                );
 
-                    <label for="portraitImportInput">
+            elements.progress
+                .style
+                .setProperty(
+                    "--progress",
+                    `${percentage}%`
+                );
 
-                        Archivo JSON
+            elements.progress
+                .setAttribute(
+                    "aria-valuenow",
+                    String(percentage)
+                );
+        }
 
-                    </label>
+        if (
+            elements.progressLabel
+        ) {
+            elements.progressLabel
+                .textContent =
+                `${progress.completed} de ${progress.total} pasos completados`;
+        }
+    }
 
-                    <input
+    function renderStepHeader(
+        step
+    ) {
+        if (!step) {
+            return;
+        }
 
-                        id="portraitImportInput"
+        if (
+            elements.currentStepTitle
+        ) {
+            elements
+                .currentStepTitle
+                .textContent =
+                step.title || "";
+        }
 
-                        type="file"
+        if (
+            elements
+                .currentStepDescription
+        ) {
+            elements
+                .currentStepDescription
+                .textContent =
+                step.description || "";
+        }
+    }
 
-                        accept="application/json,.json"
+    function renderActions(
+        state,
+        current
+    ) {
+        const currentIndex =
+            current?.index ?? 0;
 
-                        data-action="import-profile-file"
+        const lastIndex =
+            state.steps.length - 1;
 
-                    >
+        setDisabled(
+            elements.previousButton,
+            currentIndex <= 0
+        );
 
-                    <small class="text-muted">
+        if (
+            elements.nextButton
+        ) {
+            elements.nextButton
+                .textContent =
+                currentIndex >= lastIndex
+                    ? "Finalizar"
+                    : "Siguiente";
+        }
 
-                        El perfil importado sustituirá
-                        el borrador almacenado actualmente.
+        setVisible(
+            elements.generateButton,
+            current?.id ===
+                "prompt"
+        );
+    }
 
-                    </small>
+    function renderProfileSummary() {
+        const target =
+            document.querySelector(
+                "[data-profile-summary]"
+            );
 
+        if (!target) {
+            return;
+        }
+
+        const profile =
+            ProfileService
+                .getActive();
+
+        if (!profile) {
+            target.innerHTML =
+                `
+                <div class="empty-state">
+                    <strong>No hay ningún perfil activo.</strong>
+                    <span>Crea o importa un perfil para comenzar.</span>
+                </div>
+                `;
+
+            return;
+        }
+
+        const summary =
+            ProfileService
+                .getSummary();
+
+        target.innerHTML =
+            `
+            <div class="profile-summary">
+                <div class="profile-summary__main">
+                    <strong>${escapeHtml(summary.name || "Perfil sin nombre")}</strong>
+                    <span>${escapeHtml(summary.description || "")}</span>
                 </div>
 
-            `,
-
-            confirmText:
-                "Cerrar",
-
-            showCancel:
-                false
-
-        });
-
+                <div class="profile-summary__metrics">
+                    <span>${Number(summary.photoCount || 0)} fotografías</span>
+                    <span>${Number(summary.identityCompleteness || 0)} % identidad</span>
+                </div>
+            </div>
+            `;
     }
 
-
-    /* =======================================================
-       PORTAPAPELES
-       ======================================================= */
-
-    async function copyPromptToClipboard() {
-
-        const output =
-
+    function renderPromptResult(
+        result
+    ) {
+        const target =
             document.querySelector(
                 "[data-prompt-output]"
             );
 
-        const text =
-
-            output?.value ||
-
-            output?.textContent ||
-
-            "";
-
-        if (
-            !text.trim()
-        ) {
-
-            showToast({
-
-                title:
-                    "No hay contenido",
-
-                message:
-                    "Compila primero la especificación.",
-
-                type:
-                    "warning"
-
-            });
-
+        if (!target) {
             return;
-
         }
 
-        try {
-
-            await navigator
-                .clipboard
-                .writeText(text);
-
-            showToast({
-
-                title:
-                    "Especificación copiada",
-
-                message:
-                    "El contenido está disponible en el portapapeles.",
-
-                type:
-                    "success"
-
-            });
-
-        } catch (error) {
-
-            output?.select();
-
-            document.execCommand(
-                "copy"
+        const positive =
+            normalizeText(
+                result.positivePrompt ||
+                result.positive ||
+                ""
             );
 
-            showToast({
+        const negative =
+            normalizeText(
+                result.negativePrompt ||
+                result.negative ||
+                ""
+            );
 
-                title:
-                    "Especificación copiada",
+        target.innerHTML =
+            `
+            <section class="prompt-result">
+                <div class="prompt-result__header">
+                    <h3>Prompt positivo</h3>
+                    <button
+                        type="button"
+                        class="button button--secondary"
+                        data-action="copy-prompt">
+                        Copiar
+                    </button>
+                </div>
 
-                message:
-                    "Se ha utilizado el método compatible del navegador.",
+                <textarea
+                    readonly
+                    data-positive-prompt>${escapeHtml(positive)}</textarea>
 
-                type:
-                    "success"
+                <h3>Prompt negativo</h3>
 
-            });
-
-        }
-
+                <textarea
+                    readonly
+                    data-negative-prompt>${escapeHtml(negative)}</textarea>
+            </section>
+            `;
     }
 
+    /* ========================================================
+       VALIDACIÓN
+       ======================================================== */
 
-    /* =======================================================
-       UTILIDADES
-       ======================================================= */
-
-    function normalizeCompletedSteps(
-        session
+    function showValidation(
+        validation
     ) {
+        const errors =
+            Array.isArray(
+                validation?.errors
+            )
+                ? validation.errors
+                : [];
 
-        return Array.isArray(
-            session?.completedSteps
-        )
+        const warnings =
+            Array.isArray(
+                validation?.warnings
+            )
+                ? validation.warnings
+                : [];
 
-            ? session
-                .completedSteps
-                .map(Number)
-
-            : [];
-
-    }
-
-
-    function focusWorkspaceHeading() {
-
-        window.requestAnimationFrame(
-
-            () => {
-
-                document
-
-                    .querySelector(
-                        "[data-workspace-heading]"
-                    )
-
-                    ?.focus({
-
-                        preventScroll:
-                            true
-
-                    });
-
+        if (!errors.length) {
+            if (warnings.length) {
+                notify(
+                    warnings
+                        .map(
+                            item =>
+                                item.message
+                        )
+                        .join(" "),
+                    {
+                        type:
+                            "warning"
+                    }
+                );
             }
 
-        );
+            return;
+        }
 
+        openModal({
+            title:
+                "Revisión necesaria",
+
+            content:
+                buildValidationMarkup(
+                    errors,
+                    warnings
+                ),
+
+            closeLabel:
+                "Entendido"
+        });
     }
 
-
-    function clamp(
-
-        value,
-
-        minimum,
-
-        maximum
-
+    function buildValidationMarkup(
+        errors,
+        warnings
     ) {
+        const errorMarkup =
+            errors.length
+                ? `
+                    <section class="validation-group">
+                        <h4>Errores</h4>
+                        <ul>
+                            ${errors
+                                .map(
+                                    item =>
+                                        `<li>${escapeHtml(item.message || "Valor no válido.")}</li>`
+                                )
+                                .join("")}
+                        </ul>
+                    </section>
+                  `
+                : "";
 
-        return Math.min(
+        const warningMarkup =
+            warnings.length
+                ? `
+                    <section class="validation-group">
+                        <h4>Advertencias</h4>
+                        <ul>
+                            ${warnings
+                                .map(
+                                    item =>
+                                        `<li>${escapeHtml(item.message || "")}</li>`
+                                )
+                                .join("")}
+                        </ul>
+                    </section>
+                  `
+                : "";
 
-            maximum,
-
-            Math.max(
-
-                minimum,
-
-                value
-
-            )
-
+        return (
+            errorMarkup +
+            warningMarkup
         );
-
     }
 
+    /* ========================================================
+       NOTIFICACIONES
+       ======================================================== */
 
-    function humanizeKey(value) {
+    function notify(
+        message,
+        options = {}
+    ) {
+        const container =
+            ensureNotificationContainer();
 
-        return String(
-            value || ""
-        )
+        const id =
+            `notification-${++notificationCounter}`;
 
-            .replace(
-
-                /([a-z])([A-Z])/g,
-
-                "$1 $2"
-
-            )
-
-            .replace(
-
-                /[_-]+/g,
-
-                " "
-
-            )
-
-            .replace(
-
-                /^./,
-
-                character =>
-
-                    character
-                        .toUpperCase()
-
+        const type =
+            normalizeNotificationType(
+                options.type
             );
 
-    }
+        const duration =
+            normalizeDuration(
+                options.duration
+            );
 
+        const element =
+            document.createElement(
+                "article"
+            );
 
-    function formatDate(value) {
+        element.className =
+            `notification notification--${type}`;
 
-        if (!value) {
+        element.dataset
+            .notification =
+            id;
 
-            return "sin fecha";
+        element.setAttribute(
+            "role",
+            type === "error"
+                ? "alert"
+                : "status"
+        );
 
-        }
-
-        const date =
-            new Date(value);
-
-        if (
-            Number.isNaN(
-                date.getTime()
-            )
-        ) {
-
-            return "sin fecha";
-
-        }
-
-        return new Intl
-            .DateTimeFormat(
-
-                "es-ES",
-
-                {
-
-                    dateStyle:
-                        "medium",
-
-                    timeStyle:
-                        "short"
-
+        element.innerHTML =
+            `
+            <div class="notification__content">
+                ${
+                    options.title
+                        ? `<strong>${escapeHtml(options.title)}</strong>`
+                        : ""
                 }
 
-            )
+                <p>${escapeHtml(message)}</p>
+            </div>
 
-            .format(date);
+            ${
+                options.dismissible ===
+                false
+                    ? ""
+                    : `
+                      <button
+                          type="button"
+                          class="notification__close"
+                          data-action="notification-dismiss"
+                          aria-label="Cerrar">
+                          ×
+                      </button>
+                      `
+            }
+            `;
 
+        container.appendChild(
+            element
+        );
+
+        requestAnimationFrame(
+            () => {
+                element.classList
+                    .add(
+                        CLASSES.VISIBLE
+                    );
+            }
+        );
+
+        if (duration > 0) {
+            window.setTimeout(
+                () => {
+                    dismissNotification(
+                        element
+                    );
+                },
+                duration
+            );
+        }
+
+        return id;
     }
 
+    function dismissNotification(
+        element
+    ) {
+        if (!element) {
+            return false;
+        }
 
-    function escapeHTML(value) {
+        element.classList
+            .remove(
+                CLASSES.VISIBLE
+            );
 
+        window.setTimeout(
+            () => {
+                element.remove();
+            },
+            220
+        );
+
+        return true;
+    }
+
+    function ensureNotificationContainer() {
+        if (
+            elements.notifications
+        ) {
+            return elements.notifications;
+        }
+
+        const container =
+            document.createElement(
+                "div"
+            );
+
+        container.className =
+            "notifications";
+
+        container.dataset
+            .notifications =
+            "";
+
+        container.setAttribute(
+            "aria-live",
+            "polite"
+        );
+
+        document.body
+            .appendChild(
+                container
+            );
+
+        elements.notifications =
+            container;
+
+        return container;
+    }
+
+    /* ========================================================
+       MODALES
+       ======================================================== */
+
+    function openModal(
+        options = {}
+    ) {
+        const root =
+            ensureModalRoot();
+
+        root.innerHTML =
+            `
+            <div
+                class="modal-backdrop"
+                data-action="modal-close">
+            </div>
+
+            <section
+                class="modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="modal-title">
+
+                <header class="modal__header">
+                    <h2 id="modal-title">
+                        ${escapeHtml(options.title || "Información")}
+                    </h2>
+
+                    <button
+                        type="button"
+                        class="modal__close"
+                        data-action="modal-close"
+                        aria-label="Cerrar">
+                        ×
+                    </button>
+                </header>
+
+                <div class="modal__body">
+                    ${options.content || ""}
+                </div>
+
+                <footer class="modal__footer">
+                    <button
+                        type="button"
+                        class="button button--primary"
+                        data-action="modal-close">
+                        ${escapeHtml(options.closeLabel || "Cerrar")}
+                    </button>
+                </footer>
+            </section>
+            `;
+
+        root.hidden = false;
+
+        requestAnimationFrame(
+            () => {
+                root.classList
+                    .add(
+                        CLASSES.VISIBLE
+                    );
+            }
+        );
+
+        root.querySelector(
+            ".modal__close"
+        )?.focus();
+
+        return root;
+    }
+
+    function closeModal() {
+        const root =
+            elements.modalRoot;
+
+        if (
+            !root ||
+            root.hidden
+        ) {
+            return false;
+        }
+
+        root.classList
+            .remove(
+                CLASSES.VISIBLE
+            );
+
+        window.setTimeout(
+            () => {
+                root.hidden = true;
+                root.innerHTML = "";
+            },
+            200
+        );
+
+        return true;
+    }
+
+    function confirm(options = {}) {
+        return new Promise(
+            resolve => {
+                const root =
+                    ensureModalRoot();
+
+                root.innerHTML =
+                    `
+                    <div class="modal-backdrop"></div>
+
+                    <section
+                        class="modal"
+                        role="dialog"
+                        aria-modal="true">
+
+                        <header class="modal__header">
+                            <h2>
+                                ${escapeHtml(options.title || "Confirmar")}
+                            </h2>
+                        </header>
+
+                        <div class="modal__body">
+                            <p>
+                                ${escapeHtml(options.message || "¿Deseas continuar?")}
+                            </p>
+                        </div>
+
+                        <footer class="modal__footer">
+                            <button
+                                type="button"
+                                class="button button--secondary"
+                                data-confirm="cancel">
+                                ${escapeHtml(options.cancelLabel || "Cancelar")}
+                            </button>
+
+                            <button
+                                type="button"
+                                class="button button--primary"
+                                data-confirm="accept">
+                                ${escapeHtml(options.acceptLabel || "Confirmar")}
+                            </button>
+                        </footer>
+                    </section>
+                    `;
+
+                root.hidden = false;
+
+                requestAnimationFrame(
+                    () => {
+                        root.classList
+                            .add(
+                                CLASSES.VISIBLE
+                            );
+                    }
+                );
+
+                const resolveModal =
+                    value => {
+                        closeModal();
+                        resolve(value);
+                    };
+
+                root.querySelector(
+                    "[data-confirm='accept']"
+                )?.addEventListener(
+                    "click",
+                    () =>
+                        resolveModal(true),
+                    {
+                        once: true
+                    }
+                );
+
+                root.querySelector(
+                    "[data-confirm='cancel']"
+                )?.addEventListener(
+                    "click",
+                    () =>
+                        resolveModal(false),
+                    {
+                        once: true
+                    }
+                );
+            }
+        );
+    }
+
+    function ensureModalRoot() {
+        if (
+            elements.modalRoot
+        ) {
+            return elements.modalRoot;
+        }
+
+        const root =
+            document.createElement(
+                "div"
+            );
+
+        root.className =
+            "modal-root";
+
+        root.dataset.modalRoot =
+            "";
+
+        root.hidden = true;
+
+        document.body
+            .appendChild(root);
+
+        elements.modalRoot =
+            root;
+
+        return root;
+    }
+
+    /* ========================================================
+       ESTADO BUSY
+       ======================================================== */
+
+    function setBusy(
+        busy,
+        message = ""
+    ) {
+        elements.root
+            ?.classList
+            .toggle(
+                CLASSES.BUSY,
+                busy === true
+            );
+
+        elements.root
+            ?.setAttribute(
+                "aria-busy",
+                String(
+                    busy === true
+                )
+            );
+
+        if (
+            elements.busyOverlay
+        ) {
+            elements.busyOverlay
+                .hidden =
+                busy !== true;
+
+            const label =
+                elements.busyOverlay
+                    .querySelector(
+                        "[data-busy-message]"
+                    );
+
+            if (label) {
+                label.textContent =
+                    message ||
+                    "Procesando...";
+            }
+        }
+
+        return busy === true;
+    }
+
+    /* ========================================================
+       PORTAPAPELES
+       ======================================================== */
+
+    async function copyPrompt() {
+        const positive =
+            document.querySelector(
+                "[data-positive-prompt]"
+            )?.value || "";
+
+        const negative =
+            document.querySelector(
+                "[data-negative-prompt]"
+            )?.value || "";
+
+        const text =
+            [
+                "PROMPT POSITIVO",
+                positive,
+                "",
+                "PROMPT NEGATIVO",
+                negative
+            ].join("\n");
+
+        try {
+            await navigator.clipboard
+                .writeText(text);
+
+            notify(
+                "Prompt copiado al portapapeles.",
+                {
+                    type:
+                        "success"
+                }
+            );
+        } catch {
+            notify(
+                "No se pudo copiar el prompt.",
+                {
+                    type:
+                        "error"
+                }
+            );
+        }
+    }
+
+    /* ========================================================
+       ERRORES
+       ======================================================== */
+
+    function handleError(
+        error,
+        context = {}
+    ) {
+        if (
+            window.AppEvents &&
+            typeof AppEvents
+                .emitError ===
+                "function"
+        ) {
+            AppEvents.emitError(
+                error,
+                context
+            );
+
+            return;
+        }
+
+        notify(
+            error?.message ||
+            "Se ha producido un error.",
+            {
+                type:
+                    "error"
+            }
+        );
+    }
+
+    /* ========================================================
+       UTILIDADES
+       ======================================================== */
+
+    function getState() {
+        return {
+            initialized,
+            wizard:
+                window.Wizard
+                    ? Wizard.getState()
+                    : null,
+            busy:
+                elements.root
+                    ?.classList
+                    .contains(
+                        CLASSES.BUSY
+                    ) ||
+                false
+        };
+    }
+
+    function setDisabled(
+        element,
+        disabled
+    ) {
+        if (!element) {
+            return;
+        }
+
+        element.disabled =
+            disabled === true;
+
+        element.classList
+            .toggle(
+                CLASSES.DISABLED,
+                disabled === true
+            );
+
+        element.setAttribute(
+            "aria-disabled",
+            String(
+                disabled === true
+            )
+        );
+    }
+
+    function setVisible(
+        element,
+        visible
+    ) {
+        if (!element) {
+            return;
+        }
+
+        element.hidden =
+            visible !== true;
+
+        element.classList
+            .toggle(
+                CLASSES.HIDDEN,
+                visible !== true
+            );
+    }
+
+    function toggleClass(
+        element,
+        className,
+        enabled
+    ) {
+        element?.classList
+            .toggle(
+                className,
+                enabled === true
+            );
+    }
+
+    function emit(
+        eventName,
+        detail
+    ) {
+        if (
+            window.AppEvents &&
+            typeof AppEvents.emit ===
+                "function"
+        ) {
+            AppEvents.emit(
+                eventName,
+                detail
+            );
+
+            return;
+        }
+
+        window.dispatchEvent(
+            new CustomEvent(
+                eventName,
+                {
+                    detail
+                }
+            )
+        );
+    }
+
+    function isEditableElement(
+        element
+    ) {
+        if (!element) {
+            return false;
+        }
+
+        return (
+            element.matches(
+                "input, textarea, select, [contenteditable='true']"
+            )
+        );
+    }
+
+    function normalizeNotificationType(
+        value
+    ) {
+        const allowed = [
+            "info",
+            "success",
+            "warning",
+            "error"
+        ];
+
+        const normalized =
+            normalizeText(value)
+                .toLowerCase();
+
+        return allowed.includes(
+            normalized
+        )
+            ? normalized
+            : "info";
+    }
+
+    function normalizeDuration(
+        value
+    ) {
+        const numeric =
+            Number(value);
+
+        return Number.isFinite(
+            numeric
+        )
+            ? Math.max(
+                0,
+                numeric
+            )
+            : 4000;
+    }
+
+    function normalizeText(
+        value
+    ) {
+        return String(
+            value ?? ""
+        ).trim();
+    }
+
+    function escapeHtml(
+        value
+    ) {
         return String(
             value ?? ""
         )
-
             .replace(
                 /&/g,
                 "&amp;"
             )
-
             .replace(
                 /</g,
                 "&lt;"
             )
-
             .replace(
                 />/g,
                 "&gt;"
             )
-
             .replace(
                 /"/g,
                 "&quot;"
             )
-
             .replace(
                 /'/g,
                 "&#039;"
             );
-
     }
 
+    function validateDependencies() {
+        const dependencies = [
+            "Wizard",
+            "ProfileService",
+            "PromptEngine"
+        ];
 
-    function escapeAttribute(value) {
-
-        return escapeHTML(value)
-
-            .replace(
-                /`/g,
-                "&#096;"
+        const missing =
+            dependencies.filter(
+                name =>
+                    !window[name]
             );
 
+        if (missing.length) {
+            throw createError(
+                "MISSING_UI_DEPENDENCY",
+                `Faltan dependencias de UI: ${missing.join(", ")}.`
+            );
+        }
     }
 
+    function createError(
+        code,
+        message
+    ) {
+        const error =
+            new Error(message);
 
-    function getLastState() {
+        error.name =
+            "UIError";
 
-        return lastState;
+        error.code = code;
 
+        return error;
     }
 
-
-    /* =======================================================
+    /* ========================================================
        API PÚBLICA
-       ======================================================= */
+       ======================================================== */
 
-    return {
-
-        initialize,
-
+    return Object.freeze({
+        init,
+        destroy,
         render,
 
-        renderHeader,
-
-        renderSidebar,
-
-        renderWizardNavigation,
-
-        renderStep,
-
-        renderProgress,
-
-        updateButtons,
-
-        showToast,
-
-        showLoading,
-
-        hideLoading,
+        notify,
+        dismissNotification,
 
         openModal,
-
         closeModal,
+        confirm,
 
-        getLastState,
+        showValidation,
+        renderPromptResult,
 
-        escapeHTML
-
-    };
+        setBusy,
+        getState
+    });
 
 })();
 
-
-/* ===========================================================
-   EXPOSICIÓN GLOBAL
-   =========================================================== */
-
-window.PortraitUI =
-    PortraitUI;
+window.UI = UI;
