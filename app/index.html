@@ -273,27 +273,13 @@
 
 <script src="js/app.js"></script>
 
-<!-- ==========================================================
-     CORE
-=========================================================== -->
-
 <script src="js/storage.js"></script>
 <script src="js/router.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/wizard.js"></script>
-
-<!-- ==========================================================
-     UTILS
-=========================================================== -->
 
 <script src="js/utils/constants.js"></script>
 <script src="js/utils/helpers.js"></script>
 <script src="js/utils/validators.js"></script>
 <script src="js/utils/events.js"></script>
-
-<!-- ==========================================================
-     SERVICES
-=========================================================== -->
 
 <script src="js/services/photo.validation.js"></script>
 <script src="js/services/photo.reader.js"></script>
@@ -307,14 +293,18 @@
 <script src="js/services/profile.importexport.js"></script>
 <script src="js/services/profile.service.js"></script>
 
-<!-- ==========================================================
-     ENGINES
-=========================================================== -->
-
 <script src="js/engines/identity.engine.js"></script>
 <script src="js/engines/creative.engine.js"></script>
 <script src="js/engines/prompt.engine.js"></script>
 
+<script src="js/wizard.js"></script>
+<script src="js/ui.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        UI.init();
+    });
+</script>
 </body>
 
 </html>
