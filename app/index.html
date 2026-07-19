@@ -1,310 +1,2186 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0">
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="PortraitOS — Plataforma profesional para construir contratos de identidad y dirección creativa de retrato."
+    >
+
+    <meta
+        name="theme-color"
+        content="#101827"
+    >
 
     <title>PortraitOS</title>
 
-    <link rel="stylesheet" href="css/reset.css">
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/wizard.css">
-    <link rel="stylesheet" href="css/app.css">
+    <link
+        rel="stylesheet"
+        href="css/reset.css"
+    >
 
+    <link
+        rel="stylesheet"
+        href="css/variables.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/layout.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/components.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/wizard.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="css/app.css"
+    >
 </head>
 
 <body>
 
-<div id="app">
+    <div
+        class="app-shell"
+        data-app
+    >
 
-    <!-- ========================================================= -->
-    <!-- SIDEBAR -->
-    <!-- ========================================================= -->
+        <!-- ==================================================
+             SIDEBAR
+             ================================================== -->
 
-    <aside class="sidebar">
+        <aside class="app-sidebar">
 
-        <div class="logo">
+            <header class="brand">
 
-            <div class="logo-icon">
+                <div
+                    class="brand__mark"
+                    aria-hidden="true"
+                >
+                    PO
+                </div>
 
-                P
+                <div class="brand__content">
 
-            </div>
+                    <strong class="brand__name">
+                        PortraitOS
+                    </strong>
 
-            <div>
-
-                <h1>PortraitOS</h1>
-
-                <span>Professional Portrait Intelligence</span>
-
-            </div>
-
-        </div>
-
-        <nav>
-
-            <button class="nav-item active">
-
-                <span>①</span>
-
-                <div>
-
-                    <strong>Identity Studio</strong>
-
-                    <small>Construcción del perfil</small>
+                    <span class="brand__tagline">
+                        Portrait Intelligence
+                    </span>
 
                 </div>
 
-            </button>
+            </header>
 
-            <button class="nav-item disabled">
+            <nav
+                class="wizard-navigation"
+                data-wizard-nav
+                aria-label="Proceso de creación del retrato"
+            >
 
-                <span>②</span>
+                <button
+                    type="button"
+                    class="wizard-navigation__item"
+                    data-wizard-step="profile"
+                >
 
-                <div>
+                    <span class="wizard-navigation__index">
+                        01
+                    </span>
 
-                    <strong>Creative Director</strong>
+                    <span class="wizard-navigation__content">
 
-                    <small>Próximamente</small>
+                        <strong>
+                            Perfil
+                        </strong>
 
-                </div>
+                        <small>
+                            Información general
+                        </small>
 
-            </button>
+                    </span>
 
-            <button class="nav-item disabled">
-
-                <span>③</span>
-
-                <div>
-
-                    <strong>Prompt Compiler</strong>
-
-                    <small>Próximamente</small>
-
-                </div>
-
-            </button>
-
-            <button class="nav-item disabled">
-
-                <span>④</span>
-
-                <div>
-
-                    <strong>Portrait Review</strong>
-
-                    <small>Próximamente</small>
-
-                </div>
-
-            </button>
-
-            <button class="nav-item disabled">
-
-                <span>⑤</span>
-
-                <div>
-
-                    <strong>Knowledge Studio</strong>
-
-                    <small>Próximamente</small>
-
-                </div>
-
-            </button>
-
-        </nav>
-
-        <footer>
-
-            Foundation 0.1
-
-        </footer>
-
-    </aside>
-
-    <!-- ========================================================= -->
-    <!-- MAIN -->
-    <!-- ========================================================= -->
-
-    <main class="main">
-
-        <!-- HEADER -->
-
-        <header class="topbar">
-
-            <div>
-
-                <h2>
-
-                    Identity Studio
-
-                </h2>
-
-                <p>
-
-                    Construye el contrato permanente de identidad.
-
-                </p>
-
-            </div>
-
-            <div>
-
-                <button class="secondary">
-
-                    Importar Perfil
+                    <span
+                        class="wizard-navigation__status"
+                        aria-hidden="true"
+                    ></span>
 
                 </button>
 
-                <button class="primary">
+                <button
+                    type="button"
+                    class="wizard-navigation__item"
+                    data-wizard-step="photos"
+                >
 
-                    Exportar Perfil
+                    <span class="wizard-navigation__index">
+                        02
+                    </span>
+
+                    <span class="wizard-navigation__content">
+
+                        <strong>
+                            Fotografías
+                        </strong>
+
+                        <small>
+                            Evidencias visuales
+                        </small>
+
+                    </span>
+
+                    <span
+                        class="wizard-navigation__status"
+                        aria-hidden="true"
+                    ></span>
 
                 </button>
 
-            </div>
+                <button
+                    type="button"
+                    class="wizard-navigation__item"
+                    data-wizard-step="identity"
+                >
 
-        </header>
+                    <span class="wizard-navigation__index">
+                        03
+                    </span>
 
-        <!-- WIZARD -->
+                    <span class="wizard-navigation__content">
 
-        <section class="wizard">
+                        <strong>
+                            Identidad
+                        </strong>
 
-            <div class="wizard-progress">
+                        <small>
+                            Rasgos permanentes
+                        </small>
 
-                <div class="progress-bar">
+                    </span>
 
-                    <div
-                        class="progress-fill"
-                        style="width:16%;">
+                    <span
+                        class="wizard-navigation__status"
+                        aria-hidden="true"
+                    ></span>
+
+                </button>
+
+                <button
+                    type="button"
+                    class="wizard-navigation__item"
+                    data-wizard-step="direction"
+                >
+
+                    <span class="wizard-navigation__index">
+                        04
+                    </span>
+
+                    <span class="wizard-navigation__content">
+
+                        <strong>
+                            Dirección creativa
+                        </strong>
+
+                        <small>
+                            Variables visuales
+                        </small>
+
+                    </span>
+
+                    <span
+                        class="wizard-navigation__status"
+                        aria-hidden="true"
+                    ></span>
+
+                </button>
+
+                <button
+                    type="button"
+                    class="wizard-navigation__item"
+                    data-wizard-step="validation"
+                >
+
+                    <span class="wizard-navigation__index">
+                        05
+                    </span>
+
+                    <span class="wizard-navigation__content">
+
+                        <strong>
+                            Validación
+                        </strong>
+
+                        <small>
+                            Control de integridad
+                        </small>
+
+                    </span>
+
+                    <span
+                        class="wizard-navigation__status"
+                        aria-hidden="true"
+                    ></span>
+
+                </button>
+
+                <button
+                    type="button"
+                    class="wizard-navigation__item"
+                    data-wizard-step="prompt"
+                >
+
+                    <span class="wizard-navigation__index">
+                        06
+                    </span>
+
+                    <span class="wizard-navigation__content">
+
+                        <strong>
+                            Generación
+                        </strong>
+
+                        <small>
+                            Contrato final
+                        </small>
+
+                    </span>
+
+                    <span
+                        class="wizard-navigation__status"
+                        aria-hidden="true"
+                    ></span>
+
+                </button>
+
+            </nav>
+
+            <footer class="app-sidebar__footer">
+
+                <span>
+                    PortraitOS v1.0
+                </span>
+
+                <small>
+                    Identity remains constant
+                </small>
+
+            </footer>
+
+        </aside>
+
+        <!-- ==================================================
+             ÁREA PRINCIPAL
+             ================================================== -->
+
+        <main
+            class="app-main"
+            data-view
+        >
+
+            <!-- ==============================================
+                 CABECERA
+                 ============================================== -->
+
+            <header class="app-header">
+
+                <div class="app-header__content">
+
+                    <span class="app-header__eyebrow">
+                        Portrait workflow
+                    </span>
+
+                    <h1 data-current-step-title>
+                        Perfil
+                    </h1>
+
+                    <p data-current-step-description>
+                        Información general del perfil.
+                    </p>
+
+                </div>
+
+                <div class="app-header__actions">
+
+                    <button
+                        type="button"
+                        class="button button--secondary"
+                        data-action="download-profile"
+                    >
+                        Exportar
+                    </button>
+
+                    <button
+                        type="button"
+                        class="button button--primary"
+                        data-action="profile-save"
+                    >
+                        Guardar
+                    </button>
+
+                </div>
+
+            </header>
+
+            <!-- ==============================================
+                 PROGRESO
+                 ============================================== -->
+
+            <section
+                class="wizard-progress-card"
+                aria-label="Progreso del proceso"
+            >
+
+                <div class="wizard-progress-card__header">
+
+                    <strong>
+                        Progreso del perfil
+                    </strong>
+
+                    <span data-wizard-progress-label>
+                        0 de 6 pasos completados
+                    </span>
+
+                </div>
+
+                <div
+                    class="wizard-progress"
+                    data-wizard-progress
+                    role="progressbar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                >
+                    <span class="wizard-progress__bar"></span>
+                </div>
+
+            </section>
+
+            <!-- ==============================================
+                 CONTENIDO DEL WIZARD
+                 ============================================== -->
+
+            <div class="wizard-workspace">
+
+                <!-- ==========================================
+                     PASO 1 — PERFIL
+                     ========================================== -->
+
+                <section
+                    class="wizard-panel"
+                    data-step-panel="profile"
+                    aria-labelledby="profile-step-title"
+                >
+
+                    <div class="panel-heading">
+
+                        <div>
+
+                            <span class="panel-heading__eyebrow">
+                                Paso 1
+                            </span>
+
+                            <h2 id="profile-step-title">
+                                Información general
+                            </h2>
+
+                            <p>
+                                Define la ficha principal del perfil de retrato.
+                            </p>
+
+                        </div>
 
                     </div>
 
+                    <div class="content-grid content-grid--two">
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Datos del perfil
+                                    </h3>
+
+                                    <p>
+                                        Información administrativa y descriptiva.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="profile-name">
+                                            Nombre del perfil
+                                        </label>
+
+                                        <input
+                                            id="profile-name"
+                                            type="text"
+                                            maxlength="120"
+                                            placeholder="Ej. Retrato corporativo principal"
+                                            data-profile-field="name"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="profile-description">
+                                            Descripción
+                                        </label>
+
+                                        <textarea
+                                            id="profile-description"
+                                            rows="5"
+                                            maxlength="1000"
+                                            placeholder="Describe el propósito general de este perfil."
+                                            data-profile-field="description"
+                                        ></textarea>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="profile-language">
+                                            Idioma
+                                        </label>
+
+                                        <select
+                                            id="profile-language"
+                                            data-profile-field="language"
+                                        >
+                                            <option value="es">
+                                                Español
+                                            </option>
+
+                                            <option value="en">
+                                                English
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="profile-tags">
+                                            Etiquetas
+                                        </label>
+
+                                        <input
+                                            id="profile-tags"
+                                            type="text"
+                                            placeholder="corporativo, editorial"
+                                            data-profile-field="tags"
+                                        >
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <aside class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Resumen
+                                    </h3>
+
+                                    <p>
+                                        Estado actual del perfil.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div
+                                class="card__body"
+                                data-profile-summary
+                            >
+
+                                <div class="empty-state">
+
+                                    <strong>
+                                        No hay ningún perfil activo.
+                                    </strong>
+
+                                    <span>
+                                        Crea o importa un perfil para comenzar.
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </aside>
+
+                    </div>
+
+                </section>
+
+                <!-- ==========================================
+                     PASO 2 — FOTOGRAFÍAS
+                     ========================================== -->
+
+                <section
+                    class="wizard-panel"
+                    data-step-panel="photos"
+                    aria-labelledby="photos-step-title"
+                    hidden
+                >
+
+                    <div class="panel-heading">
+
+                        <div>
+
+                            <span class="panel-heading__eyebrow">
+                                Paso 2
+                            </span>
+
+                            <h2 id="photos-step-title">
+                                Fotografías de referencia
+                            </h2>
+
+                            <p>
+                                Añade evidencias visuales suficientes para identificar los rasgos permanentes.
+                            </p>
+
+                        </div>
+
+                        <span class="status-badge">
+                            Máximo 12
+                        </span>
+
+                    </div>
+
+                    <article class="card">
+
+                        <div class="card__body">
+
+                            <label
+                                class="photo-dropzone"
+                                for="photo-input"
+                            >
+
+                                <input
+                                    id="photo-input"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    multiple
+                                    data-photo-input
+                                >
+
+                                <span
+                                    class="photo-dropzone__icon"
+                                    aria-hidden="true"
+                                >
+                                    +
+                                </span>
+
+                                <strong>
+                                    Añadir fotografías
+                                </strong>
+
+                                <span>
+                                    JPG, PNG o WEBP. Máximo 15 MB por archivo.
+                                </span>
+
+                            </label>
+
+                        </div>
+
+                    </article>
+
+                    <section
+                        class="photo-gallery"
+                        data-photo-gallery
+                        aria-live="polite"
+                    >
+
+                        <div class="empty-state">
+
+                            <strong>
+                                Todavía no hay fotografías.
+                            </strong>
+
+                            <span>
+                                Añade una fotografía frontal, una vista tres cuartos y otros ángulos útiles.
+                            </span>
+
+                        </div>
+
+                    </section>
+
+                </section>
+
+                <!-- ==========================================
+                     PASO 3 — IDENTIDAD
+                     ========================================== -->
+
+                <section
+                    class="wizard-panel"
+                    data-step-panel="identity"
+                    aria-labelledby="identity-step-title"
+                    hidden
+                >
+
+                    <div class="panel-heading">
+
+                        <div>
+
+                            <span class="panel-heading__eyebrow">
+                                Paso 3
+                            </span>
+
+                            <h2 id="identity-step-title">
+                                Contrato de identidad
+                            </h2>
+
+                            <p>
+                                Documenta exclusivamente los rasgos que deben permanecer constantes.
+                            </p>
+
+                        </div>
+
+                        <span
+                            class="status-badge"
+                            data-identity-status
+                        >
+                            Borrador
+                        </span>
+
+                    </div>
+
+                    <div class="content-grid content-grid--two">
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Rasgos generales
+                                    </h3>
+
+                                    <p>
+                                        Edad aparente, estructura facial y presencia global.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="identity-age">
+                                            Edad aparente
+                                        </label>
+
+                                        <input
+                                            id="identity-age"
+                                            type="text"
+                                            data-identity-field="general.age"
+                                            placeholder="Ej. 48–52 años"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="identity-face-shape">
+                                            Forma del rostro
+                                        </label>
+
+                                        <input
+                                            id="identity-face-shape"
+                                            type="text"
+                                            data-identity-field="face.shape"
+                                            placeholder="Ej. Ovalado alargado"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-proportions">
+                                            Proporciones faciales
+                                        </label>
+
+                                        <textarea
+                                            id="identity-proportions"
+                                            rows="4"
+                                            data-identity-field="face.proportions"
+                                            placeholder="Describe las proporciones y relaciones estructurales."
+                                        ></textarea>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-asymmetries">
+                                            Asimetrías
+                                        </label>
+
+                                        <textarea
+                                            id="identity-asymmetries"
+                                            rows="4"
+                                            data-identity-field="asymmetries.description"
+                                            placeholder="Registra asimetrías naturales que no deben corregirse."
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Piel y marcadores de edad
+                                    </h3>
+
+                                    <p>
+                                        Textura real, líneas de expresión y signos naturales.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-skin">
+                                            Piel
+                                        </label>
+
+                                        <textarea
+                                            id="identity-skin"
+                                            rows="4"
+                                            data-identity-field="skin.description"
+                                            placeholder="Tono, textura, poros, pecas o marcas."
+                                        ></textarea>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-age-markers">
+                                            Marcadores de edad
+                                        </label>
+
+                                        <textarea
+                                            id="identity-age-markers"
+                                            rows="4"
+                                            data-identity-field="age-markers.description"
+                                            placeholder="Arrugas, líneas y signos que deben conservarse."
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Cabello y vello facial
+                                    </h3>
+
+                                    <p>
+                                        Patrón, densidad, textura, color y canas.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-hair">
+                                            Cabello
+                                        </label>
+
+                                        <textarea
+                                            id="identity-hair"
+                                            rows="4"
+                                            data-identity-field="hair.description"
+                                            placeholder="Describe textura, patrón, densidad, entradas y canas."
+                                        ></textarea>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-facial-hair">
+                                            Vello facial
+                                        </label>
+
+                                        <textarea
+                                            id="identity-facial-hair"
+                                            rows="4"
+                                            data-identity-field="facial-hair.description"
+                                            placeholder="Describe barba, bigote, densidad y distribución."
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Rasgos faciales
+                                    </h3>
+
+                                    <p>
+                                        Ojos, nariz, boca y mandíbula.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-eyes">
+                                            Ojos
+                                        </label>
+
+                                        <textarea
+                                            id="identity-eyes"
+                                            rows="3"
+                                            data-identity-field="eyes.description"
+                                        ></textarea>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-nose">
+                                            Nariz
+                                        </label>
+
+                                        <textarea
+                                            id="identity-nose"
+                                            rows="3"
+                                            data-identity-field="nose.description"
+                                        ></textarea>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-mouth">
+                                            Boca y labios
+                                        </label>
+
+                                        <textarea
+                                            id="identity-mouth"
+                                            rows="3"
+                                            data-identity-field="mouth.description"
+                                        ></textarea>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-jaw">
+                                            Mandíbula y mentón
+                                        </label>
+
+                                        <textarea
+                                            id="identity-jaw"
+                                            rows="3"
+                                            data-identity-field="jaw.description"
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                    </div>
+
+                    <article class="card">
+
+                        <header class="card__header">
+
+                            <div>
+
+                                <h3>
+                                    Rasgos distintivos
+                                </h3>
+
+                                <p>
+                                    Señales visuales esenciales que identifican a la persona.
+                                </p>
+
+                            </div>
+
+                        </header>
+
+                        <div class="card__body">
+
+                            <div class="form-field">
+
+                                <label for="identity-distinctive-features">
+                                    Descripción
+                                </label>
+
+                                <textarea
+                                    id="identity-distinctive-features"
+                                    rows="5"
+                                    data-identity-field="distinctive-features.description"
+                                    placeholder="Describe lunares, cicatrices, gestos, marcas o rasgos únicos."
+                                ></textarea>
+
+                            </div>
+
+                        </div>
+
+                        <footer class="card__footer">
+
+                            <button
+                                type="button"
+                                class="button button--secondary"
+                                data-action="identity-validate"
+                            >
+                                Validar identidad
+                            </button>
+
+                            <button
+                                type="button"
+                                class="button button--primary"
+                                data-action="identity-lock"
+                            >
+                                Bloquear identidad
+                            </button>
+
+                        </footer>
+
+                    </article>
+
+                </section>
+
+                <!-- ==========================================
+                     PASO 4 — DIRECCIÓN CREATIVA
+                     ========================================== -->
+
+                <section
+                    class="wizard-panel"
+                    data-step-panel="direction"
+                    aria-labelledby="direction-step-title"
+                    hidden
+                >
+
+                    <div class="panel-heading">
+
+                        <div>
+
+                            <span class="panel-heading__eyebrow">
+                                Paso 4
+                            </span>
+
+                            <h2 id="direction-step-title">
+                                Dirección creativa
+                            </h2>
+
+                            <p>
+                                Define las variables que sí pueden cambiar entre retratos.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div class="content-grid content-grid--two">
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Iluminación
+                                    </h3>
+
+                                    <p>
+                                        Fuente, dirección, contraste y temperatura.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="direction-lighting-type">
+                                            Tipo
+                                        </label>
+
+                                        <select
+                                            id="direction-lighting-type"
+                                            data-direction-field="lighting.type"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="natural">
+                                                Natural
+                                            </option>
+
+                                            <option value="studio">
+                                                Estudio
+                                            </option>
+
+                                            <option value="soft">
+                                                Suave
+                                            </option>
+
+                                            <option value="rembrandt">
+                                                Rembrandt
+                                            </option>
+
+                                            <option value="cinematic">
+                                                Cinematográfica
+                                            </option>
+
+                                            <option value="editorial">
+                                                Editorial
+                                            </option>
+
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-lighting-contrast">
+                                            Contraste
+                                        </label>
+
+                                        <select
+                                            id="direction-lighting-contrast"
+                                            data-direction-field="lighting.contrast"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="low">
+                                                Bajo
+                                            </option>
+
+                                            <option value="medium">
+                                                Medio
+                                            </option>
+
+                                            <option value="high">
+                                                Alto
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="direction-lighting-notes">
+                                            Indicaciones
+                                        </label>
+
+                                        <textarea
+                                            id="direction-lighting-notes"
+                                            rows="4"
+                                            data-direction-field="lighting.notes"
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Cámara
+                                    </h3>
+
+                                    <p>
+                                        Encuadre, óptica y punto de vista.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="direction-shot">
+                                            Plano
+                                        </label>
+
+                                        <select
+                                            id="direction-shot"
+                                            data-direction-field="camera.shotType"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="close-up">
+                                                Primer plano
+                                            </option>
+
+                                            <option value="headshot">
+                                                Headshot
+                                            </option>
+
+                                            <option value="head-and-shoulders">
+                                                Cabeza y hombros
+                                            </option>
+
+                                            <option value="medium-close-up">
+                                                Plano medio corto
+                                            </option>
+
+                                            <option value="medium-shot">
+                                                Plano medio
+                                            </option>
+
+                                            <option value="full-body">
+                                                Cuerpo completo
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-angle">
+                                            Ángulo
+                                        </label>
+
+                                        <select
+                                            id="direction-angle"
+                                            data-direction-field="camera.angle"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="eye-level">
+                                                Altura de los ojos
+                                            </option>
+
+                                            <option value="frontal">
+                                                Frontal
+                                            </option>
+
+                                            <option value="three-quarter">
+                                                Tres cuartos
+                                            </option>
+
+                                            <option value="profile">
+                                                Perfil
+                                            </option>
+
+                                            <option value="high-angle">
+                                                Picado
+                                            </option>
+
+                                            <option value="low-angle">
+                                                Contrapicado
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-lens">
+                                            Óptica
+                                        </label>
+
+                                        <input
+                                            id="direction-lens"
+                                            type="text"
+                                            data-direction-field="camera.lens"
+                                            placeholder="Ej. 85 mm"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-depth">
+                                            Profundidad de campo
+                                        </label>
+
+                                        <input
+                                            id="direction-depth"
+                                            type="text"
+                                            data-direction-field="camera.depthOfField"
+                                            placeholder="Ej. Reducida y natural"
+                                        >
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Composición
+                                    </h3>
+
+                                    <p>
+                                        Formato, orientación y distribución visual.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="direction-format">
+                                            Formato
+                                        </label>
+
+                                        <select
+                                            id="direction-format"
+                                            data-direction-field="composition.format"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="square-1-1">
+                                                Cuadrado 1:1
+                                            </option>
+
+                                            <option value="portrait-4-5">
+                                                Vertical 4:5
+                                            </option>
+
+                                            <option value="portrait-2-3">
+                                                Vertical 2:3
+                                            </option>
+
+                                            <option value="vertical-9-16">
+                                                Vertical 9:16
+                                            </option>
+
+                                            <option value="landscape-3-2">
+                                                Horizontal 3:2
+                                            </option>
+
+                                            <option value="landscape-16-9">
+                                                Horizontal 16:9
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-framing">
+                                            Encuadre
+                                        </label>
+
+                                        <input
+                                            id="direction-framing"
+                                            type="text"
+                                            data-direction-field="composition.framing"
+                                            placeholder="Ej. Centrado con aire superior"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="direction-composition-notes">
+                                            Indicaciones
+                                        </label>
+
+                                        <textarea
+                                            id="direction-composition-notes"
+                                            rows="4"
+                                            data-direction-field="composition.notes"
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Fondo
+                                    </h3>
+
+                                    <p>
+                                        Entorno, profundidad y elementos permitidos.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="direction-background-type">
+                                            Tipo
+                                        </label>
+
+                                        <select
+                                            id="direction-background-type"
+                                            data-direction-field="background.type"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="plain">
+                                                Liso
+                                            </option>
+
+                                            <option value="studio">
+                                                Estudio
+                                            </option>
+
+                                            <option value="office">
+                                                Oficina
+                                            </option>
+
+                                            <option value="home">
+                                                Hogar
+                                            </option>
+
+                                            <option value="urban">
+                                                Urbano
+                                            </option>
+
+                                            <option value="nature">
+                                                Naturaleza
+                                            </option>
+
+                                            <option value="architectural">
+                                                Arquitectónico
+                                            </option>
+
+                                            <option value="editorial">
+                                                Editorial
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-background-depth">
+                                            Profundidad
+                                        </label>
+
+                                        <input
+                                            id="direction-background-depth"
+                                            type="text"
+                                            data-direction-field="background.depth"
+                                            placeholder="Ej. Separación clara del sujeto"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="direction-background-description">
+                                            Descripción
+                                        </label>
+
+                                        <textarea
+                                            id="direction-background-description"
+                                            rows="4"
+                                            data-direction-field="background.description"
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Vestuario
+                                    </h3>
+
+                                    <p>
+                                        Estilo, prendas, materiales y accesorios.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="direction-wardrobe-style">
+                                            Estilo
+                                        </label>
+
+                                        <input
+                                            id="direction-wardrobe-style"
+                                            type="text"
+                                            data-direction-field="wardrobe.style"
+                                            placeholder="Ej. Ejecutivo contemporáneo"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-wardrobe-colors">
+                                            Colores
+                                        </label>
+
+                                        <input
+                                            id="direction-wardrobe-colors"
+                                            type="text"
+                                            data-direction-field="wardrobe.colors"
+                                            placeholder="Ej. Azul marino y blanco"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="direction-wardrobe-description">
+                                            Descripción
+                                        </label>
+
+                                        <textarea
+                                            id="direction-wardrobe-description"
+                                            rows="4"
+                                            data-direction-field="wardrobe.description"
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Pose y expresión
+                                    </h3>
+
+                                    <p>
+                                        Actitud corporal, mirada y nivel expresivo.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="direction-pose">
+                                            Pose
+                                        </label>
+
+                                        <input
+                                            id="direction-pose"
+                                            type="text"
+                                            data-direction-field="pose.position"
+                                            placeholder="Ej. Ligero giro de hombros"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-expression">
+                                            Expresión
+                                        </label>
+
+                                        <input
+                                            id="direction-expression"
+                                            type="text"
+                                            data-direction-field="pose.expression"
+                                            placeholder="Ej. Serena y segura"
+                                        >
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="direction-pose-notes">
+                                            Indicaciones
+                                        </label>
+
+                                        <textarea
+                                            id="direction-pose-notes"
+                                            rows="4"
+                                            data-direction-field="pose.notes"
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        <article class="card">
+
+                            <header class="card__header">
+
+                                <div>
+
+                                    <h3>
+                                        Tratamiento visual
+                                    </h3>
+
+                                    <p>
+                                        Acabado, realismo y criterios de posproducción.
+                                    </p>
+
+                                </div>
+
+                            </header>
+
+                            <div class="card__body">
+
+                                <div class="form-grid">
+
+                                    <div class="form-field">
+
+                                        <label for="direction-mood">
+                                            Atmósfera
+                                        </label>
+
+                                        <select
+                                            id="direction-mood"
+                                            data-direction-field="treatment.mood"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="natural">
+                                                Natural
+                                            </option>
+
+                                            <option value="professional">
+                                                Profesional
+                                            </option>
+
+                                            <option value="confident">
+                                                Segura
+                                            </option>
+
+                                            <option value="approachable">
+                                                Cercana
+                                            </option>
+
+                                            <option value="editorial">
+                                                Editorial
+                                            </option>
+
+                                            <option value="cinematic">
+                                                Cinematográfica
+                                            </option>
+
+                                            <option value="elegant">
+                                                Elegante
+                                            </option>
+
+                                            <option value="authentic">
+                                                Auténtica
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field">
+
+                                        <label for="direction-realism">
+                                            Nivel de realismo
+                                        </label>
+
+                                        <select
+                                            id="direction-realism"
+                                            data-direction-field="treatment.realism"
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="photorealistic">
+                                                Fotorrealista
+                                            </option>
+
+                                            <option value="editorial-realism">
+                                                Realismo editorial
+                                            </option>
+
+                                            <option value="cinematic-realism">
+                                                Realismo cinematográfico
+                                            </option>
+                                        </select>
+
+                                    </div>
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="direction-treatment-notes">
+                                            Indicaciones
+                                        </label>
+
+                                        <textarea
+                                            id="direction-treatment-notes"
+                                            rows="4"
+                                            data-direction-field="treatment.notes"
+                                            placeholder="Especifica grano, color, contraste y límites de retoque."
+                                        ></textarea>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                    </div>
+
+                </section>
+
+                <!-- ==========================================
+                     PASO 5 — VALIDACIÓN
+                     ========================================== -->
+
+                <section
+                    class="wizard-panel"
+                    data-step-panel="validation"
+                    aria-labelledby="validation-step-title"
+                    hidden
+                >
+
+                    <div class="panel-heading">
+
+                        <div>
+
+                            <span class="panel-heading__eyebrow">
+                                Paso 5
+                            </span>
+
+                            <h2 id="validation-step-title">
+                                Validación del perfil
+                            </h2>
+
+                            <p>
+                                Revisa la integridad del contrato antes de generar el resultado.
+                            </p>
+
+                        </div>
+
+                        <button
+                            type="button"
+                            class="button button--secondary"
+                            data-action="validation-run"
+                        >
+                            Ejecutar validación
+                        </button>
+
+                    </div>
+
+                    <div class="validation-dashboard">
+
+                        <article class="metric-card">
+
+                            <span class="metric-card__label">
+                                Perfil
+                            </span>
+
+                            <strong
+                                class="metric-card__value"
+                                data-validation-profile
+                            >
+                                Pendiente
+                            </strong>
+
+                        </article>
+
+                        <article class="metric-card">
+
+                            <span class="metric-card__label">
+                                Fotografías
+                            </span>
+
+                            <strong
+                                class="metric-card__value"
+                                data-validation-photos
+                            >
+                                Pendiente
+                            </strong>
+
+                        </article>
+
+                        <article class="metric-card">
+
+                            <span class="metric-card__label">
+                                Identidad
+                            </span>
+
+                            <strong
+                                class="metric-card__value"
+                                data-validation-identity
+                            >
+                                Pendiente
+                            </strong>
+
+                        </article>
+
+                        <article class="metric-card">
+
+                            <span class="metric-card__label">
+                                Dirección
+                            </span>
+
+                            <strong
+                                class="metric-card__value"
+                                data-validation-direction
+                            >
+                                Pendiente
+                            </strong>
+
+                        </article>
+
+                    </div>
+
+                    <article class="card">
+
+                        <header class="card__header">
+
+                            <div>
+
+                                <h3>
+                                    Informe de validación
+                                </h3>
+
+                                <p>
+                                    Errores, advertencias y recomendaciones.
+                                </p>
+
+                            </div>
+
+                        </header>
+
+                        <div
+                            class="card__body"
+                            data-validation-results
+                        >
+
+                            <div class="empty-state">
+
+                                <strong>
+                                    Validación pendiente.
+                                </strong>
+
+                                <span>
+                                    Ejecuta la revisión para comprobar el perfil.
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                </section>
+
+                <!-- ==========================================
+                     PASO 6 — GENERACIÓN
+                     ========================================== -->
+
+                <section
+                    class="wizard-panel"
+                    data-step-panel="prompt"
+                    aria-labelledby="prompt-step-title"
+                    hidden
+                >
+
+                    <div class="panel-heading">
+
+                        <div>
+
+                            <span class="panel-heading__eyebrow">
+                                Paso 6
+                            </span>
+
+                            <h2 id="prompt-step-title">
+                                Contrato de retrato
+                            </h2>
+
+                            <p>
+                                Genera el contrato estructurado de identidad y dirección creativa.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <article class="card">
+
+                        <header class="card__header">
+
+                            <div>
+
+                                <h3>
+                                    Resultado final
+                                </h3>
+
+                                <p>
+                                    El contrato mantiene separadas la identidad permanente y la variación creativa.
+                                </p>
+
+                            </div>
+
+                        </header>
+
+                        <div
+                            class="card__body"
+                            data-prompt-output
+                        >
+
+                            <div class="empty-state">
+
+                                <strong>
+                                    El contrato todavía no se ha generado.
+                                </strong>
+
+                                <span>
+                                    Pulsa «Generar contrato» para construir el resultado final.
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                </section>
+
+            </div>
+
+            <!-- ==============================================
+                 ACCIONES DEL WIZARD
+                 ============================================== -->
+
+            <footer class="wizard-actions">
+
+                <button
+                    type="button"
+                    class="button button--secondary"
+                    data-action="wizard-previous"
+                >
+                    Anterior
+                </button>
+
+                <div class="wizard-actions__primary">
+
+                    <button
+                        type="button"
+                        class="button button--primary"
+                        data-action="prompt-generate"
+                        hidden
+                    >
+                        Generar contrato
+                    </button>
+
+                    <button
+                        type="button"
+                        class="button button--primary"
+                        data-action="wizard-next"
+                    >
+                        Siguiente
+                    </button>
+
                 </div>
 
-            </div>
+            </footer>
 
-            <div class="wizard-steps">
+        </main>
 
-                <button class="step active">
+    </div>
 
-                    Fotografías
+    <!-- ======================================================
+         CAPA BUSY
+         ====================================================== -->
 
-                </button>
+    <div
+        class="busy-overlay"
+        data-busy-overlay
+        hidden
+        aria-live="polite"
+        aria-busy="true"
+    >
 
-                <button class="step">
+        <div class="busy-overlay__content">
 
-                    Identity Contract™
+            <span
+                class="spinner"
+                aria-hidden="true"
+            ></span>
 
-                </button>
+            <strong data-busy-message>
+                Procesando...
+            </strong>
 
-                <button class="step">
+        </div>
 
-                    Face Lock™
+    </div>
 
-                </button>
+    <!-- ======================================================
+         NOTIFICACIONES
+         ====================================================== -->
 
-                <button class="step">
+    <div
+        class="notifications"
+        data-notifications
+        aria-live="polite"
+        aria-atomic="false"
+    ></div>
 
-                    Objetivo
+    <!-- ======================================================
+         MODALES
+         ====================================================== -->
 
-                </button>
+    <div
+        class="modal-root"
+        data-modal-root
+        hidden
+    ></div>
 
-                <button class="step">
+    <!-- ======================================================
+         JAVASCRIPT
+         ====================================================== -->
 
-                    Percepción
+    <script src="js/storage.js"></script>
+    <script src="js/router.js"></script>
 
-                </button>
+    <script src="js/utils/constants.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/utils/validators.js"></script>
+    <script src="js/utils/events.js"></script>
 
-                <button class="step">
+    <script src="js/services/photo.validation.js"></script>
+    <script src="js/services/photo.reader.js"></script>
+    <script src="js/services/photo.thumbnail.js"></script>
+    <script src="js/services/photo.metadata.js"></script>
 
-                    Resumen
+    <script src="js/services/profile.photos.js"></script>
+    <script src="js/services/profile.identity.js"></script>
+    <script src="js/services/profile.direction.js"></script>
+    <script src="js/services/profile.validation.js"></script>
+    <script src="js/services/profile.importexport.js"></script>
+    <script src="js/services/profile.service.js"></script>
 
-                </button>
+    <script src="js/engines/identity.engine.js"></script>
+    <script src="js/engines/creative.engine.js"></script>
+    <script src="js/engines/prompt.engine.js"></script>
 
-            </div>
+    <script src="js/wizard.js"></script>
+    <script src="js/ui.js"></script>
 
-        </section>
+    <script>
+        "use strict";
 
-        <!-- CONTENT -->
+        document.addEventListener(
+            "DOMContentLoaded",
+            function () {
+                try {
+                    UI.init();
+                } catch (error) {
+                    console.error(
+                        "PortraitOS no pudo iniciarse.",
+                        error
+                    );
 
-        <section id="workspace">
+                    const root =
+                        document.querySelector(
+                            "[data-app]"
+                        );
 
-            <!--
-                El contenido se cargará dinámicamente
-                mediante JavaScript.
+                    if (root) {
+                        root.innerHTML =
+                            `
+                            <main class="startup-error">
+                                <strong>
+                                    PortraitOS no pudo iniciarse.
+                                </strong>
 
-                Cada paso del wizard será un componente
-                independiente.
-            -->
+                                <p>
+                                    ${escapeStartupMessage(
+                                        error?.message
+                                    )}
+                                </p>
+                            </main>
+                            `;
+                    }
+                }
+            }
+        );
 
-        </section>
+        function escapeStartupMessage(value) {
+            return String(
+                value ||
+                "Se ha producido un error inesperado."
+            )
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
 
-        <!-- FOOTER -->
-
-        <footer class="wizard-footer">
-
-            <button class="secondary">
-
-                Anterior
-
-            </button>
-
-            <button class="primary">
-
-                Siguiente
-
-            </button>
-
-        </footer>
-
-    </main>
-
-</div>
-
-
-<script src="js/app.js"></script>
-
-<script src="js/storage.js"></script>
-<script src="js/router.js"></script>
-
-<script src="js/utils/constants.js"></script>
-<script src="js/utils/helpers.js"></script>
-<script src="js/utils/validators.js"></script>
-<script src="js/utils/events.js"></script>
-
-<script src="js/services/photo.validation.js"></script>
-<script src="js/services/photo.reader.js"></script>
-<script src="js/services/photo.thumbnail.js"></script>
-<script src="js/services/photo.metadata.js"></script>
-
-<script src="js/services/profile.photos.js"></script>
-<script src="js/services/profile.identity.js"></script>
-<script src="js/services/profile.direction.js"></script>
-<script src="js/services/profile.validation.js"></script>
-<script src="js/services/profile.importexport.js"></script>
-<script src="js/services/profile.service.js"></script>
-
-<script src="js/engines/identity.engine.js"></script>
-<script src="js/engines/creative.engine.js"></script>
-<script src="js/engines/prompt.engine.js"></script>
-
-<script src="js/wizard.js"></script>
-<script src="js/ui.js"></script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        UI.init();
-    });
-</script>
 </body>
-
 </html>
