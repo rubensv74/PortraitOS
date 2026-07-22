@@ -101,6 +101,8 @@ const UI = (() => {
 
     let promptPreviewTimer = null;
 
+    let activePromptPreviewStage = "optimized";
+
     /* ========================================================
        INICIALIZACIÓN
        ======================================================== */
@@ -155,6 +157,8 @@ const UI = (() => {
             window.clearTimeout(promptPreviewTimer);
             promptPreviewTimer = null;
         }
+
+        activePromptPreviewStage = "optimized";
 
         initialized = false;
 
@@ -926,10 +930,8 @@ const UI = (() => {
         }
 
         const stages = buildPromptStages(result);
-        const activeStage = stages.find(stage => stage.available) || stages[0];
-        const positive = normalizeText(result.positivePrompt || result.positive || "");
-        const negative = normalizeText(result.negativePrompt || result.negative || "");
-        const metrics = calculatePromptMetrics(positive, negative);
+        const activeStage = resolveActivePromptStage(stages);
+        const metrics = activeStage.metrics;
         const previewLabel = options.preview === true || result.isPreview
             ? "Vista previa automática"
             : "Contrato generado";
@@ -941,10 +943,10 @@ const UI = (() => {
                         <span class="prompt-preview__eyebrow">${previewLabel}</span>
                         <strong>${escapeHtml(result.provider || "generic")}</strong>
                     </div>
-                    <div class="prompt-preview__metrics" aria-label="Métricas del prompt">
-                        <span><strong>${metrics.positiveCharacters}</strong> caracteres</span>
-                        <span><strong>${metrics.positiveWords}</strong> palabras</span>
-                        <span><strong>${metrics.negativeCharacters}</strong> negativos</span>
+                    <div class="prompt-preview__metrics" aria-label="Métricas de la etapa activa">
+                        <span><strong data-prompt-metric="characters">${metrics.positiveCharacters}</strong> caracteres</span>
+                        <span><strong data-prompt-metric="words">${metrics.positiveWords}</strong> palabras</span>
+                        <span><strong data-prompt-metric="negative">${metrics.negativeCharacters}</strong> negativos</span>
                     </div>
                 </div>
 
@@ -967,6 +969,9 @@ const UI = (() => {
                     <section
                         class="prompt-preview__stage${stage.id === activeStage.id ? " is-active" : ""}"
                         data-prompt-stage-panel="${stage.id}"
+                        data-prompt-characters="${stage.metrics.positiveCharacters}"
+                        data-prompt-words="${stage.metrics.positiveWords}"
+                        data-prompt-negative="${stage.metrics.negativeCharacters}"
                         ${stage.id === activeStage.id ? "" : "hidden"}>
                         <div class="prompt-result__header">
                             <h3>${stage.label}</h3>
@@ -992,28 +997,54 @@ const UI = (() => {
         const contract = result.contract || {};
 
         return [
-            {
-                id: "contract",
-                label: "Contrato base",
-                prompt: JSON.stringify(contract, null, 2),
-                negativePrompt: "",
-                available: Object.keys(contract).length > 0
-            },
-            {
-                id: "compiled",
-                label: "Compilado",
-                prompt: normalizeText(compiled.prompt || result.positivePrompt || ""),
-                negativePrompt: normalizeText(compiled.negativePrompt || result.negativePrompt || ""),
-                available: Boolean(compiled.prompt || result.positivePrompt)
-            },
-            {
-                id: "optimized",
-                label: "Optimizado",
-                prompt: normalizeText(optimized.prompt || ""),
-                negativePrompt: normalizeText(optimized.negativePrompt || ""),
-                available: Boolean(optimized.prompt)
-            }
+            createPromptStage(
+                "contract",
+                "Contrato base",
+                JSON.stringify(contract, null, 2),
+                "",
+                Object.keys(contract).length > 0
+            ),
+            createPromptStage(
+                "compiled",
+                "Compilado",
+                normalizeText(compiled.prompt || result.positivePrompt || ""),
+                normalizeText(compiled.negativePrompt || result.negativePrompt || ""),
+                Boolean(compiled.prompt || result.positivePrompt)
+            ),
+            createPromptStage(
+                "optimized",
+                "Optimizado",
+                normalizeText(optimized.prompt || ""),
+                normalizeText(optimized.negativePrompt || ""),
+                Boolean(optimized.prompt)
+            )
         ];
+    }
+
+    function createPromptStage(id, label, prompt, negativePrompt, available) {
+        return {
+            id,
+            label,
+            prompt,
+            negativePrompt,
+            available,
+            metrics: calculatePromptMetrics(prompt, negativePrompt)
+        };
+    }
+
+    function resolveActivePromptStage(stages) {
+        const selected = stages.find(
+            stage => stage.id === activePromptPreviewStage && stage.available
+        );
+
+        const fallback = selected
+            || stages.find(stage => stage.id === "optimized" && stage.available)
+            || stages.find(stage => stage.id === "compiled" && stage.available)
+            || stages.find(stage => stage.available)
+            || stages[0];
+
+        activePromptPreviewStage = fallback.id;
+        return fallback;
     }
 
     function calculatePromptMetrics(positive, negative) {
@@ -1029,16 +1060,56 @@ const UI = (() => {
             return;
         }
 
+        const selectedTab = document.querySelector(
+            `[data-prompt-stage="${stageId}"]:not(:disabled)`
+        );
+
+        if (!selectedTab) {
+            return;
+        }
+
+        activePromptPreviewStage = stageId;
+
         document.querySelectorAll("[data-prompt-stage]").forEach(tab => {
             const active = tab.dataset.promptStage === stageId;
             tab.classList.toggle("is-active", active);
             tab.setAttribute("aria-selected", String(active));
         });
 
+        let selectedPanel = null;
+
         document.querySelectorAll("[data-prompt-stage-panel]").forEach(panel => {
             const active = panel.dataset.promptStagePanel === stageId;
             panel.classList.toggle("is-active", active);
             panel.hidden = !active;
+
+            if (active) {
+                selectedPanel = panel;
+            }
+        });
+
+        updatePromptPreviewMetrics(selectedPanel);
+    }
+
+    function updatePromptPreviewMetrics(panel) {
+        if (!panel) {
+            return;
+        }
+
+        const values = {
+            characters: panel.dataset.promptCharacters || "0",
+            words: panel.dataset.promptWords || "0",
+            negative: panel.dataset.promptNegative || "0"
+        };
+
+        Object.entries(values).forEach(([metric, value]) => {
+            const target = document.querySelector(
+                `[data-prompt-metric="${metric}"]`
+            );
+
+            if (target) {
+                target.textContent = value;
+            }
         });
     }
 
