@@ -575,3 +575,16 @@ button{
         justify-content:flex-start;
     }
 }
+
+
+/* Knowledge Packs */
+.knowledge-pack-card {
+    margin-bottom: var(--space-6, 1.5rem);
+}
+
+.knowledge-pack-card [data-knowledge-pack-description] {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--color-text-muted, #64748b);
+    line-height: 1.5;
+}

@@ -88,7 +88,10 @@ const PromptBinding = (() => {
     }
 
     function runPipeline(profile, options = {}) {
-        const sourceProfile = resolveProfile(profile);
+        const sourceProfile = applyKnowledgePack(
+            resolveProfile(profile),
+            options
+        );
         const normalizedOptions = normalizeOptions(options);
 
         const contract = PromptBuilder.build(
@@ -196,6 +199,22 @@ const PromptBinding = (() => {
         throw createError(
             "PROFILE_REQUIRED",
             "No existe ningún perfil disponible para generar el prompt."
+        );
+    }
+
+
+    function applyKnowledgePack(profile, options = {}) {
+        if (
+            options.applyKnowledgePack === false ||
+            !window.KnowledgePackService ||
+            typeof KnowledgePackService.apply !== "function"
+        ) {
+            return profile;
+        }
+
+        return KnowledgePackService.apply(
+            profile,
+            options.knowledgePackId
         );
     }
 

@@ -636,7 +636,8 @@ const UI = (() => {
             "profile:loaded",
             "profile:updated",
             "identity:updated",
-            "direction:updated"
+            "direction:updated",
+            "knowledge-pack:changed"
         ].forEach(eventName => {
             subscriptions.push(
                 AppEvents.on(

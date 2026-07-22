@@ -1064,6 +1064,25 @@
 
                     </div>
 
+                    <article class="card knowledge-pack-card">
+
+                        <header class="card__header">
+                            <div>
+                                <h3>Knowledge Pack</h3>
+                                <p>Aplica una base creativa reutilizable sin modificar la identidad permanente.</p>
+                            </div>
+                        </header>
+
+                        <div class="card__body">
+                            <div class="form-field">
+                                <label for="knowledge-pack-select">Pack creativo</label>
+                                <select id="knowledge-pack-select" data-knowledge-pack-select></select>
+                                <small data-knowledge-pack-description></small>
+                            </div>
+                        </div>
+
+                    </article>
+
                     <div class="content-grid content-grid--two">
 
                         <article class="card">
@@ -2130,9 +2149,11 @@
     <script src="js/engines/prompt.compiler.js"></script>
     <script src="js/engines/prompt.optimizer.js"></script>
 
+    <script src="js/services/knowledge.pack.service.js"></script>
     <script src="js/services/prompt.history.js"></script>
     <script src="js/services/prompt.export.js"></script>
 
+    <script src="js/bindings/knowledge.binding.js"></script>
     <script src="js/bindings/prompt.binding.js"></script>
 
     <script src="js/wizard.js"></script>
@@ -2145,6 +2166,7 @@
             "DOMContentLoaded",
             function () {
                 try {
+                    KnowledgeBinding.init();
                     PromptBinding.init();
                     UI.init();
                 } catch (error) {
