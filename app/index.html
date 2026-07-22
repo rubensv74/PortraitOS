@@ -2126,6 +2126,14 @@
     <script src="js/engines/identity.engine.js"></script>
     <script src="js/engines/creative.engine.js"></script>
     <script src="js/engines/prompt.engine.js"></script>
+    <script src="js/engines/prompt.builder.js"></script>
+    <script src="js/engines/prompt.compiler.js"></script>
+    <script src="js/engines/prompt.optimizer.js"></script>
+
+    <script src="js/services/prompt.history.js"></script>
+    <script src="js/services/prompt.export.js"></script>
+
+    <script src="js/bindings/prompt.binding.js"></script>
 
     <script src="js/wizard.js"></script>
     <script src="js/ui.js"></script>
@@ -2137,6 +2145,7 @@
             "DOMContentLoaded",
             function () {
                 try {
+                    PromptBinding.init();
                     UI.init();
                 } catch (error) {
                     console.error(

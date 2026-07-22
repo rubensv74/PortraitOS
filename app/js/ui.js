@@ -404,12 +404,24 @@ const UI = (() => {
                     .getActive();
 
             const result =
-                PromptEngine.generate(
-                    profile,
-                    {
-                        strict: true
-                    }
-                );
+                window.PromptBinding &&
+                typeof PromptBinding.generate ===
+                    "function"
+                    ? PromptBinding.generate(
+                        profile,
+                        {
+                            provider: "generic",
+                            level: "professional",
+                            optimize: true,
+                            saveHistory: true
+                        }
+                    )
+                    : PromptEngine.generate(
+                        profile,
+                        {
+                            strict: true
+                        }
+                    );
 
             emit(
                 "prompt:generated",
