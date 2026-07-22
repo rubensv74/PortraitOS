@@ -59,53 +59,10 @@ const PromptBinding = (() => {
     function generate(profile, options = {}) {
         ensureInitialized();
 
-        const sourceProfile = resolveProfile(profile);
-        const normalizedOptions = normalizeOptions(options);
-
         try {
-            const contract = PromptBuilder.build(
-                sourceProfile,
-                normalizedOptions
-            );
+            const result = runPipeline(profile, options);
 
-            const compiled = PromptCompiler.compile(
-                contract,
-                normalizedOptions
-            );
-
-            const optimized = normalizedOptions.optimize
-                ? PromptOptimizer.optimize(
-                    compiled,
-                    normalizedOptions
-                )
-                : null;
-
-            const output = optimized || compiled;
-            const historyEntry = normalizedOptions.saveHistory
-                ? saveHistory(
-                    output,
-                    sourceProfile,
-                    contract,
-                    normalizedOptions,
-                    Boolean(optimized)
-                )
-                : null;
-
-            lastResult = deepFreeze(clone({
-                bindingVersion: VERSION,
-                contract,
-                compiled,
-                optimized,
-                historyEntry,
-                provider: output.provider,
-                level: output.level,
-                prompt: output.prompt,
-                positivePrompt: output.prompt,
-                negativePrompt: output.negativePrompt,
-                parameters: clone(output.parameters || {}),
-                command: output.command || "",
-                generatedAt: new Date().toISOString()
-            }));
+            lastResult = deepFreeze(clone(result));
 
             emit(EVENTS.GENERATED, {
                 result: lastResult
@@ -119,6 +76,65 @@ const PromptBinding = (() => {
 
             throw error;
         }
+    }
+
+    function preview(profile, options = {}) {
+        ensureInitialized();
+
+        return runPipeline(profile, {
+            ...options,
+            saveHistory: false
+        });
+    }
+
+    function runPipeline(profile, options = {}) {
+        const sourceProfile = resolveProfile(profile);
+        const normalizedOptions = normalizeOptions(options);
+
+        const contract = PromptBuilder.build(
+            sourceProfile,
+            normalizedOptions
+        );
+
+        const compiled = PromptCompiler.compile(
+            contract,
+            normalizedOptions
+        );
+
+        const optimized = normalizedOptions.optimize
+            ? PromptOptimizer.optimize(
+                compiled,
+                normalizedOptions
+            )
+            : null;
+
+        const output = optimized || compiled;
+        const historyEntry = normalizedOptions.saveHistory
+            ? saveHistory(
+                output,
+                sourceProfile,
+                contract,
+                normalizedOptions,
+                Boolean(optimized)
+            )
+            : null;
+
+        return clone({
+            bindingVersion: VERSION,
+            contract,
+            compiled,
+            optimized,
+            historyEntry,
+            provider: output.provider,
+            level: output.level,
+            prompt: output.prompt,
+            positivePrompt: output.prompt,
+            negativePrompt: output.negativePrompt,
+            parameters: clone(output.parameters || {}),
+            command: output.command || "",
+            generatedAt: new Date().toISOString(),
+            isPreview: normalizedOptions.saveHistory === false
+        });
     }
 
     function saveHistory(
@@ -288,6 +304,7 @@ const PromptBinding = (() => {
         init,
         destroy,
         generate,
+        preview,
         getLastResult,
         getState
     });

@@ -460,3 +460,118 @@ button{
     opacity:.35;
 
 }
+
+/* ===========================================================
+   PROMPT PREVIEW
+   =========================================================== */
+
+.prompt-preview{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}
+
+.prompt-preview__summary{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    padding:16px;
+    border:1px solid var(--border-color);
+    border-radius:14px;
+    background:var(--bg-surface-alt);
+}
+
+.prompt-preview__summary > div:first-child{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+.prompt-preview__eyebrow{
+    color:var(--text-muted);
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+}
+
+.prompt-preview__metrics{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+    gap:8px;
+}
+
+.prompt-preview__metrics span{
+    padding:7px 10px;
+    border:1px solid var(--border-color);
+    border-radius:999px;
+    background:white;
+    color:var(--text-muted);
+    font-size:12px;
+}
+
+.prompt-preview__tabs{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    border-bottom:1px solid var(--border-color);
+}
+
+.prompt-preview__tab{
+    padding:10px 14px;
+    border:0;
+    border-bottom:2px solid transparent;
+    background:transparent;
+    color:var(--text-muted);
+    font:inherit;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+}
+
+.prompt-preview__tab.is-active{
+    border-bottom-color:var(--color-primary);
+    color:var(--color-primary);
+}
+
+.prompt-preview__tab:disabled{
+    cursor:not-allowed;
+    opacity:.45;
+}
+
+.prompt-preview__stage{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.prompt-preview__stage textarea{
+    width:100%;
+    min-height:190px;
+    padding:14px;
+    resize:vertical;
+    border:1px solid var(--border-color);
+    border-radius:12px;
+    background:var(--bg-surface-alt);
+    color:var(--text-primary);
+    font:13px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.prompt-result__header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+}
+
+@media (max-width:720px){
+    .prompt-preview__summary{
+        flex-direction:column;
+    }
+
+    .prompt-preview__metrics{
+        justify-content:flex-start;
+    }
+}

@@ -99,6 +99,8 @@ const UI = (() => {
 
     let notificationCounter = 0;
 
+    let promptPreviewTimer = null;
+
     /* ========================================================
        INICIALIZACIÓN
        ======================================================== */
@@ -148,6 +150,11 @@ const UI = (() => {
         );
 
         subscriptions = [];
+
+        if (promptPreviewTimer) {
+            window.clearTimeout(promptPreviewTimer);
+            promptPreviewTimer = null;
+        }
 
         initialized = false;
 
@@ -516,7 +523,17 @@ const UI = (() => {
                 break;
 
             case "copy-prompt":
-                copyPrompt();
+                copyPrompt(
+                    actionElement.closest(
+                        "[data-prompt-stage-panel]"
+                    )
+                );
+                break;
+
+            case "prompt-preview-tab":
+                activatePromptPreviewTab(
+                    actionElement.dataset.promptStage
+                );
                 break;
 
             case "download-profile":
@@ -607,6 +624,28 @@ const UI = (() => {
             AppEvents.on(
                 "profile:updated",
                 render
+            )
+        );
+
+
+        [
+            "profile:loaded",
+            "profile:updated",
+            "identity:updated",
+            "direction:updated"
+        ].forEach(eventName => {
+            subscriptions.push(
+                AppEvents.on(
+                    eventName,
+                    schedulePromptPreview
+                )
+            );
+        });
+
+        subscriptions.push(
+            AppEvents.on(
+                "wizard:changed",
+                schedulePromptPreview
             )
         );
     }
@@ -874,7 +913,8 @@ const UI = (() => {
     }
 
     function renderPromptResult(
-        result
+        result,
+        options = {}
     ) {
         const target =
             document.querySelector(
@@ -885,44 +925,169 @@ const UI = (() => {
             return;
         }
 
-        const positive =
-            normalizeText(
-                result.positivePrompt ||
-                result.positive ||
-                ""
-            );
+        const stages = buildPromptStages(result);
+        const activeStage = stages.find(stage => stage.available) || stages[0];
+        const positive = normalizeText(result.positivePrompt || result.positive || "");
+        const negative = normalizeText(result.negativePrompt || result.negative || "");
+        const metrics = calculatePromptMetrics(positive, negative);
+        const previewLabel = options.preview === true || result.isPreview
+            ? "Vista previa automática"
+            : "Contrato generado";
 
-        const negative =
-            normalizeText(
-                result.negativePrompt ||
-                result.negative ||
-                ""
-            );
-
-        target.innerHTML =
-            `
-            <section class="prompt-result">
-                <div class="prompt-result__header">
-                    <h3>Prompt positivo</h3>
-                    <button
-                        type="button"
-                        class="button button--secondary"
-                        data-action="copy-prompt">
-                        Copiar
-                    </button>
+        target.innerHTML = `
+            <section class="prompt-preview" data-prompt-preview>
+                <div class="prompt-preview__summary">
+                    <div>
+                        <span class="prompt-preview__eyebrow">${previewLabel}</span>
+                        <strong>${escapeHtml(result.provider || "generic")}</strong>
+                    </div>
+                    <div class="prompt-preview__metrics" aria-label="Métricas del prompt">
+                        <span><strong>${metrics.positiveCharacters}</strong> caracteres</span>
+                        <span><strong>${metrics.positiveWords}</strong> palabras</span>
+                        <span><strong>${metrics.negativeCharacters}</strong> negativos</span>
+                    </div>
                 </div>
 
-                <textarea
-                    readonly
-                    data-positive-prompt>${escapeHtml(positive)}</textarea>
+                <div class="prompt-preview__tabs" role="tablist" aria-label="Etapas del pipeline">
+                    ${stages.map(stage => `
+                        <button
+                            type="button"
+                            class="prompt-preview__tab${stage.id === activeStage.id ? " is-active" : ""}"
+                            data-action="prompt-preview-tab"
+                            data-prompt-stage="${stage.id}"
+                            role="tab"
+                            aria-selected="${stage.id === activeStage.id}"
+                            ${stage.available ? "" : "disabled"}>
+                            ${stage.label}
+                        </button>
+                    `).join("")}
+                </div>
 
-                <h3>Prompt negativo</h3>
-
-                <textarea
-                    readonly
-                    data-negative-prompt>${escapeHtml(negative)}</textarea>
+                ${stages.map(stage => `
+                    <section
+                        class="prompt-preview__stage${stage.id === activeStage.id ? " is-active" : ""}"
+                        data-prompt-stage-panel="${stage.id}"
+                        ${stage.id === activeStage.id ? "" : "hidden"}>
+                        <div class="prompt-result__header">
+                            <h3>${stage.label}</h3>
+                            <button
+                                type="button"
+                                class="button button--secondary"
+                                data-action="copy-prompt">
+                                Copiar
+                            </button>
+                        </div>
+                        <textarea readonly data-positive-prompt>${escapeHtml(stage.prompt)}</textarea>
+                        <h3>Prompt negativo</h3>
+                        <textarea readonly data-negative-prompt>${escapeHtml(stage.negativePrompt)}</textarea>
+                    </section>
+                `).join("")}
             </section>
-            `;
+        `;
+    }
+
+    function buildPromptStages(result) {
+        const compiled = result.compiled || {};
+        const optimized = result.optimized || {};
+        const contract = result.contract || {};
+
+        return [
+            {
+                id: "contract",
+                label: "Contrato base",
+                prompt: JSON.stringify(contract, null, 2),
+                negativePrompt: "",
+                available: Object.keys(contract).length > 0
+            },
+            {
+                id: "compiled",
+                label: "Compilado",
+                prompt: normalizeText(compiled.prompt || result.positivePrompt || ""),
+                negativePrompt: normalizeText(compiled.negativePrompt || result.negativePrompt || ""),
+                available: Boolean(compiled.prompt || result.positivePrompt)
+            },
+            {
+                id: "optimized",
+                label: "Optimizado",
+                prompt: normalizeText(optimized.prompt || ""),
+                negativePrompt: normalizeText(optimized.negativePrompt || ""),
+                available: Boolean(optimized.prompt)
+            }
+        ];
+    }
+
+    function calculatePromptMetrics(positive, negative) {
+        return {
+            positiveCharacters: positive.length,
+            positiveWords: positive ? positive.split(/\s+/).filter(Boolean).length : 0,
+            negativeCharacters: negative.length
+        };
+    }
+
+    function activatePromptPreviewTab(stageId) {
+        if (!stageId) {
+            return;
+        }
+
+        document.querySelectorAll("[data-prompt-stage]").forEach(tab => {
+            const active = tab.dataset.promptStage === stageId;
+            tab.classList.toggle("is-active", active);
+            tab.setAttribute("aria-selected", String(active));
+        });
+
+        document.querySelectorAll("[data-prompt-stage-panel]").forEach(panel => {
+            const active = panel.dataset.promptStagePanel === stageId;
+            panel.classList.toggle("is-active", active);
+            panel.hidden = !active;
+        });
+    }
+
+    function schedulePromptPreview() {
+        if (promptPreviewTimer) {
+            window.clearTimeout(promptPreviewTimer);
+        }
+
+        promptPreviewTimer = window.setTimeout(
+            renderAutomaticPromptPreview,
+            250
+        );
+    }
+
+    function renderAutomaticPromptPreview() {
+        promptPreviewTimer = null;
+
+        const currentStep = window.Wizard && Wizard.getCurrentStep
+            ? Wizard.getCurrentStep()
+            : null;
+
+        if (
+            currentStep?.id !== "prompt" ||
+            !window.PromptBinding ||
+            typeof PromptBinding.preview !== "function"
+        ) {
+            return;
+        }
+
+        try {
+            const profile = ProfileService.getActive();
+            const result = PromptBinding.preview(profile, {
+                provider: "generic",
+                level: "professional",
+                optimize: true
+            });
+
+            renderPromptResult(result, { preview: true });
+        } catch (error) {
+            const target = document.querySelector("[data-prompt-output]");
+            if (target) {
+                target.innerHTML = `
+                    <div class="empty-state">
+                        <strong>Vista previa no disponible.</strong>
+                        <span>${escapeHtml(error.message || "Completa los datos obligatorios para construir el contrato.")}</span>
+                    </div>
+                `;
+            }
+        }
     }
 
     /* ========================================================
@@ -1442,14 +1607,16 @@ const UI = (() => {
        PORTAPAPELES
        ======================================================== */
 
-    async function copyPrompt() {
+    async function copyPrompt(scope = document) {
+        const root = scope || document;
+
         const positive =
-            document.querySelector(
+            root.querySelector(
                 "[data-positive-prompt]"
             )?.value || "";
 
         const negative =
-            document.querySelector(
+            root.querySelector(
                 "[data-negative-prompt]"
             )?.value || "";
 
