@@ -383,6 +383,13 @@ const UI = (() => {
 
             ProfileService.save();
 
+            if (
+                window.ProfileManager &&
+                typeof ProfileManager.saveActive === "function"
+            ) {
+                ProfileManager.saveActive();
+            }
+
             notify(
                 "Perfil guardado correctamente.",
                 {

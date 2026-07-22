@@ -488,9 +488,7 @@ const ProfileBinding = (() => {
                     "function"
             ) {
                 result =
-                    ProfileService.save(
-                        profile
-                    );
+                    ProfileService.save();
             }
 
             dirty = false;
