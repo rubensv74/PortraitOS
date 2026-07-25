@@ -2287,6 +2287,64 @@
 
                     </section>
 
+                    <section class="review-studio" data-review-binding aria-labelledby="review-studio-title">
+                        <div class="panel-heading review-studio__heading">
+                            <div>
+                                <span class="panel-heading__eyebrow">Portrait Review</span>
+                                <h2 id="review-studio-title">Revisar imagen generada</h2>
+                                <p>Comprueba manualmente que la imagen respeta la identidad permanente y la dirección creativa del perfil activo.</p>
+                            </div>
+                            <span class="review-status" data-review-status data-status="pending">Sin evaluar</span>
+                        </div>
+
+                        <div class="review-studio__layout">
+                            <article class="card review-studio__image-card">
+                                <header class="card__header"><div><h3>Imagen</h3><p>Importa el resultado generado que deseas validar.</p></div></header>
+                                <div class="card__body">
+                                    <label class="review-dropzone">
+                                        <input type="file" accept="image/*" data-review-image>
+                                        <span>Seleccionar imagen</span>
+                                        <small>PNG, JPG, WEBP u otro formato compatible con el navegador.</small>
+                                    </label>
+                                    <div class="review-preview">
+                                        <div class="empty-state" data-review-preview-empty><strong>No hay imagen cargada.</strong><span>La vista previa aparecerá aquí.</span></div>
+                                        <img data-review-preview alt="Imagen sometida a revisión" hidden>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <article class="card review-studio__checklist">
+                                <header class="card__header"><div><h3>Checklist de identidad</h3><p>Marca el resultado observado en cada criterio.</p></div></header>
+                                <div class="card__body review-checklist">
+                                    <div class="review-check" data-criterion="face"><strong>Rostro y proporciones</strong><span>La estructura facial coincide con el perfil.</span><div>
+                                        <label><input type="radio" name="review-face" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-face" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-face" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-face" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="review-check"><strong>Edad aparente</strong><span>La edad visual permanece estable.</span><div>
+                                        <label><input type="radio" name="review-age" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-age" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-age" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-age" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="review-check"><strong>Cabello y canas</strong><span>Color, textura, patrón y densidad se conservan.</span><div>
+                                        <label><input type="radio" name="review-hair" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-hair" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-hair" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-hair" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="review-check"><strong>Barba y vello facial</strong><span>Forma, densidad y color son coherentes.</span><div>
+                                        <label><input type="radio" name="review-beard" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-beard" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-beard" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-beard" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="review-check"><strong>Piel</strong><span>Tono, textura, arrugas y marcas se mantienen.</span><div>
+                                        <label><input type="radio" name="review-skin" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-skin" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-skin" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-skin" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="review-check"><strong>Rasgos distintivos</strong><span>Asimetrías y detalles únicos siguen presentes.</span><div>
+                                        <label><input type="radio" name="review-features" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-features" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-features" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-features" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="review-check"><strong>Accesorios permanentes</strong><span>Los elementos definidos como identidad aparecen correctamente.</span><div>
+                                        <label><input type="radio" name="review-accessories" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-accessories" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-accessories" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-accessories" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="review-check"><strong>Dirección creativa</strong><span>Vestuario, luz, pose y escena respetan la intención definida.</span><div>
+                                        <label><input type="radio" name="review-direction" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-direction" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-direction" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-direction" value="fail" data-review-check> No conforme</label></div></div>
+                                    <div class="form-field"><label for="review-notes">Observaciones</label><textarea id="review-notes" rows="5" data-review-notes placeholder="Describe desviaciones, correcciones o razones de aprobación."></textarea></div>
+                                    <p class="review-studio__message" data-review-message></p>
+                                </div>
+                                <footer class="card__footer review-studio__actions"><button type="button" class="button button--secondary" data-action="reset-review">Nueva revisión</button><button type="button" class="button button--primary" data-action="save-review">Guardar revisión</button></footer>
+                            </article>
+                        </div>
+
+                        <article class="card review-history">
+                            <header class="card__header"><div><h3>Historial del perfil</h3><p>Últimas revisiones guardadas para la identidad activa.</p></div><button type="button" class="button button--tertiary" data-action="clear-review-history">Vaciar historial</button></header>
+                            <div class="card__body" data-review-history></div>
+                        </article>
+                    </section>
+
                 </section>
 
             </div>
@@ -2415,6 +2473,7 @@
     <script src="js/services/knowledge.pack.service.js"></script>
     <script src="js/services/prompt.history.js"></script>
     <script src="js/services/prompt.export.js"></script>
+    <script src="js/services/portrait.review.js"></script>
 
     <script src="js/bindings/knowledge.binding.js"></script>
     <script src="js/bindings/profile.binding.js"></script>
@@ -2423,6 +2482,7 @@
     <script src="js/bindings/identity.binding.js"></script>
     <script src="js/bindings/prompt.binding.js"></script>
     <script src="js/bindings/export.binding.js"></script>
+    <script src="js/bindings/review.binding.js"></script>
 
     <script src="js/wizard.js"></script>
     <script src="js/ui.js"></script>
@@ -2441,6 +2501,7 @@
                     IdentityBinding.init();
                     PromptBinding.init();
                     ExportBinding.init({ autoPreview: false });
+                    ReviewBinding.init();
                     UI.init();
                 } catch (error) {
                     console.error(
