@@ -1910,7 +1910,7 @@
                      ========================================== -->
 
                 <section
-                    class="wizard-panel"
+                    class="wizard-panel validation-studio"
                     data-step-panel="validation"
                     aria-labelledby="validation-step-title"
                     hidden
@@ -1929,7 +1929,7 @@
                             </h2>
 
                             <p>
-                                Revisa la integridad del contrato antes de generar el resultado.
+                                Comprueba la preparación del Portrait Contract antes de generar el prompt.
                             </p>
 
                         </div>
@@ -1937,115 +1937,84 @@
                         <button
                             type="button"
                             class="button button--secondary"
-                            data-action="validation-run"
+                            data-action="validate-profile"
                         >
                             Ejecutar validación
                         </button>
 
                     </div>
 
-                    <div class="validation-dashboard">
+                    <div class="validation-hero">
 
-                        <article class="metric-card">
-
-                            <span class="metric-card__label">
-                                Perfil
-                            </span>
-
-                            <strong
-                                class="metric-card__value"
-                                data-validation-profile
+                        <article class="validation-score-card">
+                            <span class="validation-score-card__eyebrow">Portrait Readiness</span>
+                            <strong class="validation-score-card__value" data-validation-score>0 %</strong>
+                            <div
+                                class="validation-score-card__track"
+                                role="progressbar"
+                                aria-label="Portrait Readiness Score"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                                aria-valuenow="0"
                             >
-                                Pendiente
-                            </strong>
-
+                                <span data-validation-score-bar></span>
+                            </div>
                         </article>
 
-                        <article class="metric-card">
-
-                            <span class="metric-card__label">
-                                Fotografías
-                            </span>
-
-                            <strong
-                                class="metric-card__value"
-                                data-validation-photos
-                            >
-                                Pendiente
-                            </strong>
-
+                        <article class="validation-status-card">
+                            <span class="validation-status-card__eyebrow">Estado global</span>
+                            <strong class="validation-status" data-validation-status>Pendiente</strong>
+                            <p>
+                                La generación se habilita cuando no existen bloqueos ni errores críticos.
+                            </p>
                         </article>
 
-                        <article class="metric-card">
-
-                            <span class="metric-card__label">
-                                Identidad
-                            </span>
-
-                            <strong
-                                class="metric-card__value"
-                                data-validation-identity
-                            >
-                                Pendiente
-                            </strong>
-
-                        </article>
-
-                        <article class="metric-card">
-
-                            <span class="metric-card__label">
-                                Dirección
-                            </span>
-
-                            <strong
-                                class="metric-card__value"
-                                data-validation-direction
-                            >
-                                Pendiente
-                            </strong>
-
+                        <article class="validation-summary" data-validation-summary>
+                            <div class="validation-summary__item"><strong>0</strong><span>Bloqueos</span></div>
+                            <div class="validation-summary__item"><strong>0</strong><span>Errores</span></div>
+                            <div class="validation-summary__item"><strong>0</strong><span>Advertencias</span></div>
+                            <div class="validation-summary__item"><strong>0</strong><span>Recomendaciones</span></div>
                         </article>
 
                     </div>
 
-                    <article class="card">
+                    <div class="validation-sections" data-validation-sections></div>
 
-                        <header class="card__header">
+                    <div class="validation-report-grid">
 
-                            <div>
-
-                                <h3>
-                                    Informe de validación
-                                </h3>
-
-                                <p>
-                                    Errores, advertencias y recomendaciones.
-                                </p>
-
+                        <article class="card">
+                            <header class="card__header">
+                                <div>
+                                    <h3>Incidencias</h3>
+                                    <p>Bloqueos, errores y advertencias que requieren revisión.</p>
+                                </div>
+                            </header>
+                            <div class="card__body validation-list" data-validation-issues>
+                                <div class="empty-state">
+                                    <strong>Validación pendiente.</strong>
+                                    <span>Ejecuta la revisión para comprobar el perfil.</span>
+                                </div>
                             </div>
+                        </article>
 
-                        </header>
-
-                        <div
-                            class="card__body"
-                            data-validation-results
-                        >
-
-                            <div class="empty-state">
-
-                                <strong>
-                                    Validación pendiente.
-                                </strong>
-
-                                <span>
-                                    Ejecuta la revisión para comprobar el perfil.
-                                </span>
-
+                        <article class="card">
+                            <header class="card__header">
+                                <div>
+                                    <h3>Recomendaciones</h3>
+                                    <p>Mejoras sugeridas para elevar la calidad del contrato.</p>
+                                </div>
+                            </header>
+                            <div class="card__body validation-list" data-validation-recommendations>
+                                <div class="empty-state">
+                                    <strong>Sin recomendaciones todavía.</strong>
+                                    <span>Se mostrarán después de ejecutar la validación.</span>
+                                </div>
                             </div>
+                        </article>
 
-                        </div>
+                    </div>
 
-                    </article>
+                    <div data-validation-results hidden></div>
 
                 </section>
 
