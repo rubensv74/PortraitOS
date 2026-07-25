@@ -694,12 +694,17 @@
 
                         </div>
 
-                        <span
-                            class="status-badge"
-                            data-identity-status
-                        >
-                            Borrador
-                        </span>
+                        <div class="identity-heading-status">
+                            <span
+                                class="status-badge"
+                                data-identity-status
+                            >
+                                Borrador
+                            </span>
+                            <span class="identity-completeness" data-identity-completeness>
+                                0 % completado
+                            </span>
+                        </div>
 
                     </div>
 
@@ -726,6 +731,21 @@
                             <div class="card__body">
 
                                 <div class="form-grid">
+
+                                    <div class="form-field form-field--full">
+
+                                        <label for="identity-summary">
+                                            Resumen de identidad
+                                        </label>
+
+                                        <textarea
+                                            id="identity-summary"
+                                            rows="3"
+                                            data-identity-field="summary"
+                                            placeholder="Resume en una frase los rasgos inmutables que definen a la persona."
+                                        ></textarea>
+
+                                    </div>
 
                                     <div class="form-field">
 
@@ -1048,6 +1068,15 @@
                                 data-action="identity-lock"
                             >
                                 Bloquear identidad
+                            </button>
+
+                            <button
+                                type="button"
+                                class="button button--secondary"
+                                data-action="identity-unlock"
+                                hidden
+                            >
+                                Desbloquear identidad
                             </button>
 
                         </footer>
@@ -2181,6 +2210,7 @@
     <script src="js/bindings/profile.binding.js"></script>
     <script src="js/bindings/profile.manager.binding.js"></script>
     <script src="js/bindings/photos.binding.js"></script>
+    <script src="js/bindings/identity.binding.js"></script>
     <script src="js/bindings/prompt.binding.js"></script>
 
     <script src="js/wizard.js"></script>
@@ -2197,6 +2227,7 @@
                     ProfileManagerBinding.init();
                     ProfileBinding.init();
                     PhotosBinding.init();
+                    IdentityBinding.init();
                     PromptBinding.init();
                     UI.init();
                 } catch (error) {
