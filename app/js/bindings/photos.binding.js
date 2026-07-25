@@ -913,10 +913,10 @@ const PhotosBinding = (() => {
             typeof service.add ===
                 "function"
         ) {
-            return service.add(
-                photo,
-                file
-            );
+            // ProfileService.photos.add recibe el File original y
+            // delega el procesamiento en ProfilePhotos. Evitamos
+            // persistir dos modelos de fotografía incompatibles.
+            return service.add(file);
         }
 
         if (
@@ -1354,7 +1354,9 @@ const PhotosBinding = (() => {
         photo
     ) {
         const source =
+            photo.source?.dataUrl ||
             photo.dataUrl ||
+            photo.thumbnail?.dataUrl ||
             photo.thumbnail ||
             "";
 
@@ -1362,17 +1364,23 @@ const PhotosBinding = (() => {
             photo.metadata || {};
 
         const width =
+            photo.dimensions?.width ||
+            metadata.image?.width ||
             metadata.width ||
             photo.width ||
             "—";
 
         const height =
+            photo.dimensions?.height ||
+            metadata.image?.height ||
             metadata.height ||
             photo.height ||
             "—";
 
         const size =
             formatFileSize(
+                photo.source?.size ??
+                metadata.file?.size ??
                 photo.size
             );
 
@@ -1394,7 +1402,7 @@ const PhotosBinding = (() => {
 
                     <div>
                         <dt>Tipo</dt>
-                        <dd>${escapeHtml(photo.type || metadata.mimeType || "—")}</dd>
+                        <dd>${escapeHtml(photo.source?.type || metadata.file?.type || photo.type || metadata.mimeType || "—")}</dd>
                     </div>
 
                     <div>
@@ -1475,7 +1483,9 @@ const PhotosBinding = (() => {
             isPrimaryPhoto(photo);
 
         const source =
+            photo.thumbnail?.dataUrl ||
             photo.thumbnail ||
+            photo.source?.dataUrl ||
             photo.dataUrl ||
             "";
 
@@ -1527,7 +1537,7 @@ const PhotosBinding = (() => {
                     </strong>
 
                     <span>
-                        ${escapeHtml(formatFileSize(photo.size))}
+                        ${escapeHtml(formatPhotoTechnicalSummary(photo))}
                     </span>
 
                 </div>
@@ -1911,11 +1921,9 @@ const PhotosBinding = (() => {
             getActiveProfile();
 
         return (
-            photo?.primary ===
-                true ||
-            profile
-                ?.primaryPhotoId ===
-                photo?.id
+            photo?.isPrimary === true ||
+            photo?.primary === true ||
+            profile?.primaryPhotoId === photo?.id
         );
     }
 
@@ -2056,6 +2064,30 @@ const PhotosBinding = (() => {
                 );
             }
         );
+    }
+
+    function formatPhotoTechnicalSummary(photo) {
+        const width =
+            photo?.dimensions?.width ||
+            photo?.metadata?.image?.width ||
+            photo?.metadata?.width;
+
+        const height =
+            photo?.dimensions?.height ||
+            photo?.metadata?.image?.height ||
+            photo?.metadata?.height;
+
+        const size = formatFileSize(
+            photo?.source?.size ??
+            photo?.metadata?.file?.size ??
+            photo?.size
+        );
+
+        if (width && height) {
+            return `${width} × ${height} · ${size}`;
+        }
+
+        return size;
     }
 
     function formatFileSize(

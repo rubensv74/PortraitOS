@@ -590,9 +590,14 @@
 
                         </div>
 
-                        <span class="status-badge">
-                            Máximo 12
-                        </span>
+                        <div class="photo-step-status" aria-label="Estado de fotografías">
+                            <span class="status-badge" data-photo-status>
+                                Sin fotografías
+                            </span>
+                            <span class="photo-step-status__counter" data-photo-counter>
+                                0 / 12
+                            </span>
+                        </div>
 
                     </div>
 
@@ -625,8 +630,12 @@
                                 </strong>
 
                                 <span>
-                                    JPG, PNG o WEBP. Máximo 15 MB por archivo.
+                                    JPG, PNG o WEBP. Mínimo 640 × 640 px y máximo 10 MB por archivo.
                                 </span>
+
+                                <small class="photo-dropzone__hint">
+                                    También puedes arrastrar los archivos hasta esta zona.
+                                </small>
 
                             </label>
 
@@ -2171,6 +2180,7 @@
     <script src="js/bindings/knowledge.binding.js"></script>
     <script src="js/bindings/profile.binding.js"></script>
     <script src="js/bindings/profile.manager.binding.js"></script>
+    <script src="js/bindings/photos.binding.js"></script>
     <script src="js/bindings/prompt.binding.js"></script>
 
     <script src="js/wizard.js"></script>
@@ -2186,6 +2196,7 @@
                     KnowledgeBinding.init();
                     ProfileManagerBinding.init();
                     ProfileBinding.init();
+                    PhotosBinding.init();
                     PromptBinding.init();
                     UI.init();
                 } catch (error) {

@@ -1572,3 +1572,210 @@
     }
 
 }
+
+
+/* ===========================================================
+   SPRINT 040 — PHOTOS WORKSPACE INTEGRATION
+   =========================================================== */
+
+.photo-step-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.photo-step-status__counter {
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.photo-dropzone {
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-8);
+    background: var(--bg-surface-alt);
+    border: 2px dashed var(--border-color-strong);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    cursor: pointer;
+    transition:
+        border-color var(--transition-fast),
+        background var(--transition-fast),
+        transform var(--transition-fast);
+}
+
+.photo-dropzone:hover,
+.photo-dropzone.is-dragging {
+    background: #EFF6FF;
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+}
+
+.photo-dropzone.is-loading {
+    cursor: wait;
+    opacity: .7;
+}
+
+.photo-dropzone input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.photo-dropzone__icon {
+    width: 62px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #DBEAFE;
+    border-radius: var(--radius-lg);
+    color: var(--color-primary);
+    font-size: 30px;
+    font-weight: var(--font-weight-medium);
+}
+
+.photo-dropzone > span:not(.photo-dropzone__icon),
+.photo-dropzone__hint {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.photo-gallery.is-empty {
+    display: block;
+}
+
+.photo-card.is-primary {
+    border-color: var(--color-primary);
+}
+
+.photo-card__preview {
+    position: relative;
+}
+
+.photo-card__primary-badge {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    padding: 5px 10px;
+    background: rgba(17, 24, 39, .88);
+    border-radius: var(--radius-round);
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    backdrop-filter: blur(8px);
+}
+
+.photo-card__inspect {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
+    padding: 7px 10px;
+    background: rgba(17, 24, 39, .82);
+    border: 0;
+    border-radius: var(--radius-sm);
+    color: #FFFFFF;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.photo-card:hover .photo-card__inspect,
+.photo-card:focus-within .photo-card__inspect {
+    opacity: 1;
+}
+
+.photo-card__content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-1);
+}
+
+.photo-card__content strong,
+.photo-card__content span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.photo-card__content strong {
+    font-size: var(--font-size-sm);
+}
+
+.photo-card__content span {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.photo-card__actions {
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-1) var(--space-1);
+}
+
+.photo-card__order-actions {
+    display: flex;
+    gap: var(--space-1);
+}
+
+.photo-inspection {
+    display: grid;
+    grid-template-columns: minmax(220px, .9fr) minmax(240px, 1.1fr);
+    gap: var(--space-6);
+    align-items: start;
+}
+
+.photo-inspection__image {
+    width: 100%;
+    max-height: 520px;
+    object-fit: contain;
+    background: var(--bg-surface-alt);
+    border-radius: var(--radius-lg);
+}
+
+.photo-inspection__metadata {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+}
+
+.photo-inspection__metadata div {
+    padding: var(--space-3);
+    background: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.photo-inspection__metadata dt {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.photo-inspection__metadata dd {
+    margin: var(--space-1) 0 0;
+    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    .photo-step-status {
+        align-items: flex-end;
+        flex-direction: column;
+    }
+
+    .photo-inspection {
+        grid-template-columns: 1fr;
+    }
+}
