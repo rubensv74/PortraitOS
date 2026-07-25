@@ -58,7 +58,7 @@ const ValidationBinding = (() => {
             "[data-validation-navigate]",
 
         GENERATE_ACTION:
-            "[data-action='generate-prompt']"
+            "[data-action='prompt-generate'], [data-action='generate-prompt']"
     });
 
     const CLASSES = Object.freeze({
