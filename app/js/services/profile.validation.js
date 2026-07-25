@@ -150,6 +150,70 @@ const ProfileValidation = (() => {
         });
     }
 
+    function getGenerationReadiness(profileOrId = null, options = {}) {
+        const profile = resolveProfileForReadiness(profileOrId);
+        const report = validateForPrompt(profile);
+
+        return deepFreeze(clone({
+            ready: report.ready === true,
+            valid: report.valid === true,
+            status: report.ready
+                ? "ready"
+                : report.summary.errorCount > 0
+                    ? "blocked"
+                    : "warning",
+            score: report.score,
+            profileId: profile.id || profile.profileId || null,
+            profileName: profile.name || profile.profileName || "",
+            summary: {
+                errors: report.summary.errorCount,
+                warnings: report.summary.warningCount,
+                info: report.summary.infoCount,
+                total: report.summary.totalFindings
+            },
+            errors: clone(report.errors),
+            warnings: clone(report.warnings),
+            information: clone(report.information),
+            rules: clone(report.rules),
+            generatedAt: report.validatedAt,
+            report: options.includeReport === true ? clone(report) : undefined
+        }));
+    }
+
+    function resolveProfileForReadiness(profileOrId) {
+        if (profileOrId && typeof profileOrId === "object" && !Array.isArray(profileOrId)) {
+            return profileOrId;
+        }
+
+        const activeProfile =
+            typeof window !== "undefined" &&
+            window.ProfileService &&
+            typeof ProfileService.getActive === "function"
+                ? ProfileService.getActive()
+                : null;
+
+        if (!activeProfile) {
+            throw createError(
+                "PROFILE_REQUIRED",
+                "No existe ningún perfil activo para validar."
+            );
+        }
+
+        if (
+            typeof profileOrId === "string" &&
+            normalizeText(profileOrId) &&
+            activeProfile.id !== profileOrId &&
+            activeProfile.profileId !== profileOrId
+        ) {
+            throw createError(
+                "PROFILE_NOT_ACTIVE",
+                "El perfil solicitado no coincide con el perfil activo."
+            );
+        }
+
+        return activeProfile;
+    }
+
     function assertValid(
         profile,
         options = {}
@@ -1132,6 +1196,20 @@ const ProfileValidation = (() => {
         );
     }
 
+    function deepFreeze(value) {
+        if (
+            !value ||
+            typeof value !== "object" ||
+            Object.isFrozen(value)
+        ) {
+            return value;
+        }
+
+        Object.freeze(value);
+        Object.values(value).forEach(deepFreeze);
+        return value;
+    }
+
     /* ========================================================
        ERRORES
        ======================================================== */
@@ -1181,6 +1259,7 @@ const ProfileValidation = (() => {
         validate,
         validateForDraft,
         validateForPrompt,
+        getGenerationReadiness,
 
         assertValid,
         assertReadyForPrompt,

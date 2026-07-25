@@ -2091,6 +2091,22 @@
                         </header>
 
                         <div class="card__body">
+                            <section class="prompt-readiness" data-prompt-readiness data-status="blocked" aria-live="polite">
+                                <div class="prompt-readiness__score" aria-label="Portrait Readiness Score">
+                                    <strong data-prompt-readiness-score>0</strong>
+                                    <span>/ 100</span>
+                                </div>
+                                <div class="prompt-readiness__summary">
+                                    <span class="prompt-readiness__eyebrow">Portrait Readiness</span>
+                                    <strong data-prompt-readiness-label>Generación bloqueada</strong>
+                                    <span>La validación del perfil es la única fuente de verdad para generar.</span>
+                                </div>
+                                <div class="prompt-readiness__metrics" aria-label="Resumen de validación">
+                                    <span><strong data-prompt-readiness-errors>0</strong> errores</span>
+                                    <span><strong data-prompt-readiness-warnings>0</strong> advertencias</span>
+                                </div>
+                            </section>
+
                             <div class="form-grid">
                                 <div class="form-field">
                                     <label for="prompt-provider">Proveedor</label>

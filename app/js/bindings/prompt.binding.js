@@ -49,6 +49,7 @@ const PromptBinding = (() => {
 
         bindWorkspace();
         updateWorkspaceStatus();
+        updateReadinessPanel();
         updateHistoryCount();
 
         initialized = true;
@@ -96,8 +97,16 @@ const PromptBinding = (() => {
     }
 
     function runPipeline(profile, options = {}) {
+        const resolvedProfile = resolveProfile(profile);
+        const readiness = validateGenerationReadiness(resolvedProfile);
+
+        if (!readiness.ready) {
+            updateReadinessPanel(readiness);
+            throw createReadinessError(readiness);
+        }
+
         const sourceProfile = applyKnowledgePack(
-            resolveProfile(profile),
+            resolvedProfile,
             options
         );
         const normalizedOptions = normalizeOptions(options);
@@ -223,6 +232,22 @@ const PromptBinding = (() => {
 
         window.addEventListener(EVENTS.GENERATED, updateHistoryCount);
         window.addEventListener("portraitos:prompt-history:changed", updateHistoryCount);
+
+        [
+            "profile:loaded",
+            "profile:cleared",
+            "profile:updated",
+            "portraitos:profile:changed",
+            "portraitos:photos:changed",
+            "portraitos:identity:changed",
+            "portraitos:direction:changed"
+        ].forEach(eventName => {
+            window.addEventListener(eventName, () => {
+                updateWorkspaceStatus();
+                updateReadinessPanel();
+            });
+        });
+
         bound = true;
     }
 
@@ -241,6 +266,96 @@ const PromptBinding = (() => {
             target.classList.remove("is-ready");
             target.classList.add("is-error");
         }
+    }
+
+    function validateGenerationReadiness(profile) {
+        if (
+            !window.ProfileValidation ||
+            typeof ProfileValidation.getGenerationReadiness !== "function"
+        ) {
+            throw createError(
+                "VALIDATION_SERVICE_REQUIRED",
+                "El servicio de validación no está disponible."
+            );
+        }
+
+        return ProfileValidation.getGenerationReadiness(profile);
+    }
+
+    function updateReadinessPanel(readiness = null) {
+        if (typeof document === "undefined") return null;
+
+        const panel = document.querySelector("[data-prompt-readiness]");
+        if (!panel) return null;
+
+        let result = readiness;
+
+        try {
+            if (!result) {
+                result = ProfileValidation.getGenerationReadiness();
+            }
+        } catch (error) {
+            result = {
+                ready: false,
+                status: "blocked",
+                score: 0,
+                summary: { errors: 1, warnings: 0, info: 0 },
+                errors: [{ message: error.message }]
+            };
+        }
+
+        const score = Number.isFinite(Number(result.score))
+            ? Math.max(0, Math.min(100, Number(result.score)))
+            : 0;
+        const status = result.ready
+            ? "ready"
+            : result.status === "warning"
+                ? "warning"
+                : "blocked";
+
+        panel.dataset.status = status;
+        panel.querySelector("[data-prompt-readiness-score]")?.replaceChildren(
+            document.createTextNode(String(score))
+        );
+        panel.querySelector("[data-prompt-readiness-label]")?.replaceChildren(
+            document.createTextNode(
+                status === "ready"
+                    ? "Listo para generar"
+                    : status === "warning"
+                        ? "Listo con advertencias"
+                        : "Generación bloqueada"
+            )
+        );
+        panel.querySelector("[data-prompt-readiness-errors]")?.replaceChildren(
+            document.createTextNode(String(result.summary?.errors || 0))
+        );
+        panel.querySelector("[data-prompt-readiness-warnings]")?.replaceChildren(
+            document.createTextNode(String(result.summary?.warnings || 0))
+        );
+
+        const generateButton = document.querySelector("[data-action='prompt-generate']");
+        if (generateButton) {
+            generateButton.disabled = !result.ready;
+            generateButton.setAttribute(
+                "aria-disabled",
+                String(!result.ready)
+            );
+            generateButton.title = result.ready
+                ? "Generar contrato"
+                : result.errors?.[0]?.message || "Completa la validación antes de generar.";
+        }
+
+        return clone(result);
+    }
+
+    function createReadinessError(readiness) {
+        const error = createError(
+            "PROFILE_NOT_READY",
+            readiness.errors?.[0]?.message ||
+                "El perfil no está preparado para generar un prompt."
+        );
+        error.validation = clone(readiness);
+        return error;
     }
 
     function updateHistoryCount() {
@@ -404,7 +519,8 @@ const PromptBinding = (() => {
         getLastResult,
         getOptions,
         getOutputMode,
-        getState
+        getState,
+        updateReadinessPanel
     });
 
 })();
