@@ -30,6 +30,8 @@ const PromptBinding = (() => {
 
     let initialized = false;
     let lastResult = null;
+    let preferences = { ...DEFAULT_OPTIONS, outputMode: "full" };
+    let bound = false;
 
     function init() {
         if (initialized) {
@@ -45,6 +47,10 @@ const PromptBinding = (() => {
             PromptHistoryService.init();
         }
 
+        bindWorkspace();
+        updateWorkspaceStatus();
+        updateHistoryCount();
+
         initialized = true;
 
         return getState();
@@ -53,6 +59,7 @@ const PromptBinding = (() => {
     function destroy() {
         initialized = false;
         lastResult = null;
+        bound = false;
         return true;
     }
 
@@ -60,7 +67,7 @@ const PromptBinding = (() => {
         ensureInitialized();
 
         try {
-            const result = runPipeline(profile, options);
+            const result = runPipeline(profile, { ...getOptions(), ...options });
 
             lastResult = deepFreeze(clone(result));
 
@@ -82,6 +89,7 @@ const PromptBinding = (() => {
         ensureInitialized();
 
         return runPipeline(profile, {
+            ...getOptions(),
             ...options,
             saveHistory: false
         });
@@ -173,12 +181,81 @@ const PromptBinding = (() => {
         return clone(lastResult);
     }
 
+    function getOptions() {
+        return clone(preferences);
+    }
+
+    function getOutputMode() {
+        return preferences.outputMode || "full";
+    }
+
     function getState() {
         return deepFreeze(clone({
             initialized,
             hasResult: Boolean(lastResult),
-            lastResult
+            lastResult,
+            preferences
         }));
+    }
+
+    function bindWorkspace() {
+        if (bound || typeof document === "undefined") return;
+
+        document.querySelectorAll("[data-prompt-option]").forEach(control => {
+            const key = control.dataset.promptOption;
+            if (!key) return;
+
+            if (control.type === "checkbox") {
+                control.checked = preferences[key] !== false;
+            } else if (preferences[key] !== undefined) {
+                control.value = String(preferences[key]);
+            }
+
+            control.addEventListener("change", () => {
+                preferences[key] = control.type === "checkbox"
+                    ? control.checked
+                    : control.value;
+
+                updateWorkspaceStatus();
+                emit("portraitos:prompt:options-changed", { options: getOptions() });
+            });
+        });
+
+        window.addEventListener(EVENTS.GENERATED, updateHistoryCount);
+        window.addEventListener("portraitos:prompt-history:changed", updateHistoryCount);
+        bound = true;
+    }
+
+    function updateWorkspaceStatus() {
+        if (typeof document === "undefined") return;
+        const target = document.querySelector("[data-prompt-workspace-status]");
+        if (!target) return;
+
+        try {
+            const profile = window.ProfileService?.getActive?.();
+            target.textContent = profile ? "Preparado" : "Sin perfil activo";
+            target.classList.toggle("is-ready", Boolean(profile));
+            target.classList.toggle("is-error", !profile);
+        } catch {
+            target.textContent = "Revisión necesaria";
+            target.classList.remove("is-ready");
+            target.classList.add("is-error");
+        }
+    }
+
+    function updateHistoryCount() {
+        if (typeof document === "undefined") return;
+        const target = document.querySelector("[data-prompt-history-count]");
+        if (!target) return;
+
+        let count = 0;
+        try {
+            const snapshot = window.PromptHistoryService?.getSnapshot?.();
+            count = Array.isArray(snapshot?.entries) ? snapshot.entries.length : 0;
+        } catch {
+            count = 0;
+        }
+        target.textContent = `${count} ${count === 1 ? "generación guardada" : "generaciones guardadas"}`;
     }
 
     function resolveProfile(profile) {
@@ -325,6 +402,8 @@ const PromptBinding = (() => {
         generate,
         preview,
         getLastResult,
+        getOptions,
+        getOutputMode,
         getState
     });
 

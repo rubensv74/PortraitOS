@@ -2038,6 +2038,65 @@
 
                     </div>
 
+                    <article class="card prompt-workspace-controls">
+
+                        <header class="card__header">
+                            <div>
+                                <h3>Configuración de salida</h3>
+                                <p>Selecciona proveedor, nivel y vista del resultado sin alterar el perfil.</p>
+                            </div>
+                            <span class="prompt-workspace-status" data-prompt-workspace-status>Preparado</span>
+                        </header>
+
+                        <div class="card__body">
+                            <div class="form-grid">
+                                <div class="form-field">
+                                    <label for="prompt-provider">Proveedor</label>
+                                    <select id="prompt-provider" data-prompt-option="provider">
+                                        <option value="generic">Genérico</option>
+                                        <option value="openai">OpenAI</option>
+                                        <option value="gpt-image">GPT Image</option>
+                                        <option value="midjourney">Midjourney</option>
+                                        <option value="flux">Flux</option>
+                                        <option value="stable-diffusion">Stable Diffusion</option>
+                                        <option value="ideogram">Ideogram</option>
+                                        <option value="firefly">Adobe Firefly</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label for="prompt-level">Nivel de detalle</label>
+                                    <select id="prompt-level" data-prompt-option="level">
+                                        <option value="short">Breve</option>
+                                        <option value="standard">Estándar</option>
+                                        <option value="professional" selected>Profesional</option>
+                                        <option value="contract">Contrato</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label for="prompt-output-mode">Vista inicial</label>
+                                    <select id="prompt-output-mode" data-prompt-option="outputMode">
+                                        <option value="full">Prompt completo</option>
+                                        <option value="identity">Identidad</option>
+                                        <option value="creative">Dirección creativa</option>
+                                    </select>
+                                </div>
+                                <div class="form-field prompt-workspace-toggle">
+                                    <label>Optimización</label>
+                                    <label class="checkbox-row">
+                                        <input type="checkbox" data-prompt-option="optimize" checked>
+                                        <span>Optimizar para el proveedor seleccionado</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <footer class="card__footer prompt-workspace-meta">
+                            <span data-prompt-history-count>0 generaciones guardadas</span>
+                            <span>La vista previa no se guarda en el historial.</span>
+                        </footer>
+
+                    </article>
+
                     <article class="card">
 
                         <header class="card__header">

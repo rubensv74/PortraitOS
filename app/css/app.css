@@ -1787,3 +1787,15 @@
 [data-step-panel="identity"].is-locked .card { opacity: 0.92; }
 [data-identity-field].is-dirty { outline: 2px solid color-mix(in srgb, var(--color-primary, #6b2c7a) 24%, transparent); }
 @media (max-width: 720px) { .identity-heading-status { align-items: flex-start; } }
+
+/* Sprint 042 — Prompt Workspace */
+.prompt-workspace-controls { margin-bottom: var(--space-6); }
+.prompt-workspace-status { padding: .4rem .7rem; border-radius: var(--radius-round); background: var(--bg-surface-alt); color: var(--text-secondary); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
+.prompt-workspace-status.is-ready { background: #ECFDF3; color: #027A48; }
+.prompt-workspace-status.is-error { background: #FEF3F2; color: #B42318; }
+.prompt-workspace-toggle { justify-content: flex-end; }
+.checkbox-row { display: flex; align-items: center; gap: var(--space-2); min-height: 42px; color: var(--text-secondary); font-size: var(--font-size-sm); }
+.checkbox-row input { width: 18px; height: 18px; }
+.prompt-workspace-meta { justify-content: space-between; color: var(--text-muted); font-size: var(--font-size-xs); }
+.prompt-preview__stage textarea { width: 100%; min-height: 220px; resize: vertical; font-family: var(--font-family-mono, ui-monospace, monospace); line-height: 1.55; }
+@media (max-width: 720px) { .prompt-workspace-meta { align-items: flex-start; flex-direction: column; gap: var(--space-2); } }

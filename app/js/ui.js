@@ -428,9 +428,9 @@ const UI = (() => {
                     ? PromptBinding.generate(
                         profile,
                         {
-                            provider: "generic",
-                            level: "professional",
-                            optimize: true,
+                            ...(typeof PromptBinding.getOptions === "function"
+                                ? PromptBinding.getOptions()
+                                : {}),
                             saveHistory: true
                         }
                     )
@@ -659,6 +659,11 @@ const UI = (() => {
                 "wizard:changed",
                 schedulePromptPreview
             )
+        );
+
+        window.addEventListener(
+            "portraitos:prompt:options-changed",
+            schedulePromptPreview
         );
     }
 
@@ -1003,6 +1008,29 @@ const UI = (() => {
         const compiled = result.compiled || {};
         const optimized = result.optimized || {};
         const contract = result.contract || {};
+        const outputMode = window.PromptBinding?.getOutputMode?.() || "full";
+
+        if (outputMode === "identity") {
+            const identity = contract.identity || {};
+            return [createPromptStage(
+                "identity",
+                "Identidad",
+                JSON.stringify(identity, null, 2),
+                "",
+                Object.keys(identity).length > 0
+            )];
+        }
+
+        if (outputMode === "creative") {
+            const direction = contract.creativeDirection || contract.direction || {};
+            return [createPromptStage(
+                "creative",
+                "Dirección creativa",
+                JSON.stringify(direction, null, 2),
+                "",
+                Object.keys(direction).length > 0
+            )];
+        }
 
         return [
             createPromptStage(
@@ -1150,9 +1178,9 @@ const UI = (() => {
         try {
             const profile = ProfileService.getActive();
             const result = PromptBinding.preview(profile, {
-                provider: "generic",
-                level: "professional",
-                optimize: true
+                ...(typeof PromptBinding.getOptions === "function"
+                    ? PromptBinding.getOptions()
+                    : {})
             });
 
             renderPromptResult(result, { preview: true });
