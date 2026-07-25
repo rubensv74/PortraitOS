@@ -2178,6 +2178,115 @@
 
                     </article>
 
+                    <section class="export-studio" data-export-binding aria-labelledby="export-studio-title">
+
+                        <div class="panel-heading export-studio__heading">
+                            <div>
+                                <span class="panel-heading__eyebrow">Export Studio</span>
+                                <h2 id="export-studio-title">Exportar resultado</h2>
+                                <p>Previsualiza y descarga el perfil, la identidad, el Knowledge Pack activo o el resultado generado.</p>
+                            </div>
+                            <span class="export-studio__status" data-export-status>
+                                <span data-export-loading hidden></span>
+                                <span data-export-status-message>Preparado</span>
+                            </span>
+                        </div>
+
+                        <div class="export-studio__layout">
+                            <article class="card export-studio__controls">
+                                <header class="card__header">
+                                    <div>
+                                        <h3>Configuración</h3>
+                                        <p>Selecciona el alcance, formato y comportamiento de la exportación.</p>
+                                    </div>
+                                </header>
+
+                                <div class="card__body">
+                                    <div class="form-grid">
+                                        <div class="form-field">
+                                            <label for="export-type">Contenido</label>
+                                            <select id="export-type" data-export-field="type">
+                                                <option value="auto">Resultado disponible</option>
+                                                <option value="profile">Perfil completo</option>
+                                                <option value="identity">Identidad</option>
+                                                <option value="knowledge-pack">Knowledge Pack activo</option>
+                                                <option value="prompt">Prompt</option>
+                                                <option value="compiled-prompt">Prompt compilado</option>
+                                                <option value="optimized-prompt">Prompt optimizado</option>
+                                                <option value="contract">Portrait Contract</option>
+                                                <option value="history">Historial</option>
+                                                <option value="package">Paquete PortraitOS</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-field">
+                                            <label for="export-format">Formato</label>
+                                            <select id="export-format" data-export-field="format">
+                                                <option value="txt">TXT</option>
+                                                <option value="md">Markdown</option>
+                                                <option value="json">JSON</option>
+                                                <option value="portraitos">PortraitOS</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-field form-field--wide">
+                                            <label for="export-file-name">Nombre del archivo</label>
+                                            <input id="export-file-name" type="text" data-export-field="file-name" placeholder="Generado automáticamente">
+                                        </div>
+                                    </div>
+
+                                    <div class="export-studio__options" aria-label="Opciones de exportación">
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="include-metadata" checked><span>Incluir metadatos</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="include-negative-prompt" checked><span>Incluir prompt negativo</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="include-parameters" checked><span>Incluir parámetros</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="include-command" checked><span>Incluir comando</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="include-contract" checked><span>Incluir contrato</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="include-history"><span>Incluir historial</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="download" checked><span>Descargar archivo</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="copy"><span>Copiar al portapapeles</span></label>
+                                        <label class="checkbox-row"><input type="checkbox" data-export-field="pretty-print" checked><span>JSON legible</span></label>
+                                    </div>
+                                </div>
+
+                                <footer class="card__footer export-studio__actions">
+                                    <button type="button" class="button button--secondary" data-action="preview-export">Previsualizar</button>
+                                    <button type="button" class="button button--secondary" data-action="copy-export">Copiar</button>
+                                    <button type="button" class="button button--primary" data-action="export-current">Exportar</button>
+                                </footer>
+                            </article>
+
+                            <article class="card export-studio__preview" data-export-preview-wrapper data-has-preview="false">
+                                <header class="card__header">
+                                    <div>
+                                        <h3>Vista previa</h3>
+                                        <p>Revisa el contenido antes de descargarlo.</p>
+                                    </div>
+                                    <button type="button" class="button button--tertiary" data-action="clear-export-preview" disabled>Limpiar</button>
+                                </header>
+
+                                <div class="card__body">
+                                    <div class="empty-state" data-export-empty>
+                                        <strong>No hay ninguna previsualización.</strong>
+                                        <span>Selecciona el contenido y pulsa «Previsualizar».</span>
+                                    </div>
+
+                                    <div data-export-result hidden>
+                                        <dl class="export-studio__metadata">
+                                            <div><dt>Archivo</dt><dd data-export-file-name>—</dd></div>
+                                            <div><dt>Formato</dt><dd data-export-format>—</dd></div>
+                                            <div><dt>Tipo</dt><dd data-export-type>—</dd></div>
+                                            <div><dt>Tamaño</dt><dd data-export-size>0 B</dd></div>
+                                        </dl>
+                                        <textarea class="export-studio__output" data-export-preview readonly spellcheck="false" aria-label="Contenido de exportación"></textarea>
+                                    </div>
+
+                                    <p class="form-error" data-export-error hidden></p>
+                                </div>
+                            </article>
+                        </div>
+
+                    </section>
+
                 </section>
 
             </div>
@@ -2313,6 +2422,7 @@
     <script src="js/bindings/photos.binding.js"></script>
     <script src="js/bindings/identity.binding.js"></script>
     <script src="js/bindings/prompt.binding.js"></script>
+    <script src="js/bindings/export.binding.js"></script>
 
     <script src="js/wizard.js"></script>
     <script src="js/ui.js"></script>
@@ -2330,6 +2440,7 @@
                     PhotosBinding.init();
                     IdentityBinding.init();
                     PromptBinding.init();
+                    ExportBinding.init({ autoPreview: false });
                     UI.init();
                 } catch (error) {
                     console.error(

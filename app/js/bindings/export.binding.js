@@ -90,7 +90,16 @@ const ExportBinding = (() => {
             "history",
 
         PACKAGE:
-            "package"
+            "package",
+
+        PROFILE:
+            "profile",
+
+        IDENTITY:
+            "identity",
+
+        KNOWLEDGE_PACK:
+            "knowledge-pack"
     });
 
     const FORMATS = Object.freeze({
@@ -639,6 +648,15 @@ const ExportBinding = (() => {
                     exportOptions
                 );
 
+            case EXPORT_TYPES.PROFILE:
+            case EXPORT_TYPES.IDENTITY:
+            case EXPORT_TYPES.KNOWLEDGE_PACK:
+                return service
+                    .exportData(
+                        source,
+                        exportOptions
+                    );
+
             default:
                 return service
                     .exportData(
@@ -1183,6 +1201,15 @@ const ExportBinding = (() => {
             case EXPORT_TYPES.PACKAGE:
                 return resolvePackageSource();
 
+            case EXPORT_TYPES.PROFILE:
+                return resolveProfileSource();
+
+            case EXPORT_TYPES.IDENTITY:
+                return resolveIdentitySource();
+
+            case EXPORT_TYPES.KNOWLEDGE_PACK:
+                return resolveKnowledgePackSource();
+
             case EXPORT_TYPES.COMPILED_PROMPT:
                 return resolveCompiledPrompt();
 
@@ -1422,6 +1449,81 @@ const ExportBinding = (() => {
                     new Date()
                         .toISOString()
             }
+        };
+    }
+
+
+    async function resolveProfileSource() {
+        const profile =
+            await resolveCurrentProfile();
+
+        if (!profile) {
+            throw createBindingError(
+                "PROFILE_UNAVAILABLE",
+                "No hay ningún perfil activo para exportar."
+            );
+        }
+
+        return profile;
+    }
+
+    async function resolveIdentitySource() {
+        const profile =
+            await resolveProfileSource();
+
+        const identity =
+            profile.identity ||
+            profile.profileIdentity ||
+            null;
+
+        if (!identity) {
+            throw createBindingError(
+                "IDENTITY_UNAVAILABLE",
+                "El perfil activo no contiene una identidad exportable."
+            );
+        }
+
+        return {
+            profileId:
+                profile.id || null,
+
+            profileName:
+                profile.name || profile.title || "Perfil",
+
+            identity
+        };
+    }
+
+    async function resolveKnowledgePackSource() {
+        const profile =
+            await resolveProfileSource();
+
+        const service =
+            window.KnowledgePackService;
+
+        const selectedId =
+            service?.getSelectedId?.(profile);
+
+        const pack =
+            selectedId
+                ? service?.get?.(selectedId, profile)
+                : null;
+
+        if (!pack || pack.id === "none") {
+            throw createBindingError(
+                "KNOWLEDGE_PACK_UNAVAILABLE",
+                "No hay ningún Knowledge Pack activo para exportar."
+            );
+        }
+
+        return {
+            profileId:
+                profile.id || null,
+
+            selectedId,
+
+            knowledgePack:
+                pack
         };
     }
 
