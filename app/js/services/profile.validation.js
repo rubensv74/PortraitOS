@@ -29,6 +29,50 @@ const ProfileValidation = (() => {
     const MINIMUM_IDENTITY_COMPLETENESS = 70;
     const MINIMUM_REFERENCE_PHOTOS = 1;
 
+    const RULE_DEFINITIONS = Object.freeze({
+        PROFILE_ID_MISSING: rule("profile", VALIDATION_LEVELS.WARNING),
+        PROFILE_NAME_REQUIRED: rule("profile", VALIDATION_LEVELS.ERROR),
+        IDENTITY_STRUCTURE_MISSING: rule("identity", VALIDATION_LEVELS.ERROR),
+        DIRECTION_STRUCTURE_MISSING: rule("direction", VALIDATION_LEVELS.ERROR),
+        INVALID_CREATED_AT: rule("profile", VALIDATION_LEVELS.WARNING),
+        INVALID_UPDATED_AT: rule("profile", VALIDATION_LEVELS.WARNING),
+        INVALID_PROFILE_VERSION: rule("profile", VALIDATION_LEVELS.WARNING),
+        REFERENCE_PHOTO_REQUIRED: rule("photos", VALIDATION_LEVELS.ERROR),
+        PHOTO_LIMIT_EXCEEDED: rule("photos", VALIDATION_LEVELS.ERROR),
+        INVALID_PHOTO_OBJECT: rule("photos", VALIDATION_LEVELS.ERROR),
+        PHOTO_ID_REQUIRED: rule("photos", VALIDATION_LEVELS.ERROR),
+        DUPLICATED_PHOTO_ID: rule("photos", VALIDATION_LEVELS.ERROR),
+        PHOTO_SOURCE_MISSING: rule("photos", VALIDATION_LEVELS.ERROR),
+        PHOTO_THUMBNAIL_MISSING: rule("photos", VALIDATION_LEVELS.WARNING),
+        PHOTO_DIMENSIONS_MISSING: rule("photos", VALIDATION_LEVELS.WARNING),
+        PHOTO_QUALITY_INSUFFICIENT: rule("photos", VALIDATION_LEVELS.WARNING),
+        MULTIPLE_PRIMARY_PHOTOS: rule("photos", VALIDATION_LEVELS.ERROR),
+        PRIMARY_PHOTO_REQUIRED: rule("photos", VALIDATION_LEVELS.ERROR),
+        IDENTITY_SUMMARY_REQUIRED: rule("identity", VALIDATION_LEVELS.ERROR),
+        AGE_APPEARANCE_MISSING: rule("identity", VALIDATION_LEVELS.WARNING),
+        IDENTITY_INCOMPLETE: rule("identity", VALIDATION_LEVELS.ERROR),
+        IDENTITY_NOT_LOCKED: rule("identity", VALIDATION_LEVELS.ERROR),
+        IDENTITY_STATUS_INCONSISTENT: rule("identity", VALIDATION_LEVELS.WARNING),
+        IDENTITY_SECTIONS_MISSING: rule("identity", VALIDATION_LEVELS.WARNING),
+        INVALID_IDENTITY_SECTION: rule("identity", VALIDATION_LEVELS.WARNING),
+        INVALID_SOURCE_PHOTO_IDS: rule("identity", VALIDATION_LEVELS.WARNING),
+        CREATIVE_OBJECTIVE_REQUIRED: rule("direction", VALIDATION_LEVELS.ERROR),
+        OUTPUT_FORMAT_MISSING: rule("direction", VALIDATION_LEVELS.WARNING),
+        DIRECTION_NOT_READY: rule("direction", VALIDATION_LEVELS.ERROR),
+        EXPRESSION_MISSING: rule("direction", VALIDATION_LEVELS.WARNING),
+        WARDROBE_MISSING: rule("direction", VALIDATION_LEVELS.WARNING),
+        UNKNOWN_SOURCE_PHOTO: rule("contract", VALIDATION_LEVELS.WARNING),
+        LOCKED_IDENTITY_WITHOUT_PHOTOS: rule("contract", VALIDATION_LEVELS.WARNING)
+    });
+
+    function rule(section, severity) {
+        return Object.freeze({
+            section,
+            severity,
+            enabled: true
+        });
+    }
+
     /* ========================================================
        VALIDACIÓN PRINCIPAL
        ======================================================== */
@@ -40,6 +84,13 @@ const ProfileValidation = (() => {
             normalizeOptions(options);
 
         const findings = [];
+
+        Object.defineProperties(findings, {
+            ruleConfig: {
+                value: config.rules,
+                enumerable: false
+            }
+        });
 
         validateBaseStructure(
             profile,
@@ -793,10 +844,17 @@ const ProfileValidation = (() => {
                 PROFILE_STATUS.INCOMPLETE;
         }
 
+        const rules =
+            buildRuleResults(findings);
+
+        const score =
+            calculateScore(rules);
+
         return {
             valid,
             ready,
             status,
+            score,
 
             summary: {
                 errorCount:
@@ -806,15 +864,23 @@ const ProfileValidation = (() => {
                 infoCount:
                     information.length,
                 totalFindings:
-                    findings.length
+                    findings.length,
+                errors:
+                    errors.length,
+                warnings:
+                    warnings.length,
+                info:
+                    information.length
             },
 
             errors,
             warnings,
             information,
 
+            rules,
+
             findings:
-                clone(findings),
+                clone(Array.from(findings)),
 
             validatedAt:
                 new Date().toISOString()
@@ -828,12 +894,110 @@ const ProfileValidation = (() => {
         message,
         path = ""
     ) {
+        const configuredRule =
+            findings.ruleConfig?.[code];
+
+        if (configuredRule?.enabled === false) {
+            return;
+        }
+
+        const configuredLevel =
+            normalizeLevel(
+                configuredRule?.severity
+            );
+
         findings.push({
-            level,
+            id: code,
+            level:
+                configuredLevel || level,
+            severity:
+                configuredLevel || level,
             code,
             message,
-            path
+            path,
+            section:
+                configuredRule?.section ||
+                RULE_DEFINITIONS[code]?.section ||
+                "profile"
         });
+    }
+
+    function buildRuleResults(findings) {
+        const findingsByCode =
+            new Map();
+
+        findings.forEach(item => {
+            if (!findingsByCode.has(item.code)) {
+                findingsByCode.set(item.code, []);
+            }
+
+            findingsByCode.get(item.code).push(item);
+        });
+
+        const config =
+            findings.ruleConfig || {};
+
+        return Object.entries(RULE_DEFINITIONS)
+            .map(([id, definition]) => {
+                const override =
+                    config[id] || {};
+
+                const enabled =
+                    override.enabled !== false;
+
+                const severity =
+                    normalizeLevel(override.severity) ||
+                    definition.severity;
+
+                const matches =
+                    findingsByCode.get(id) || [];
+
+                return {
+                    id,
+                    section:
+                        override.section ||
+                        definition.section,
+                    severity,
+                    enabled,
+                    passed:
+                        enabled && matches.length === 0,
+                    findingCount:
+                        matches.length,
+                    findings:
+                        clone(matches)
+                };
+            });
+    }
+
+    function calculateScore(rules) {
+        const penalties = Object.freeze({
+            error: 20,
+            warning: 7,
+            info: 2
+        });
+
+        const penalty = rules
+            .filter(ruleResult =>
+                ruleResult.enabled &&
+                !ruleResult.passed
+            )
+            .reduce((total, ruleResult) => {
+                return total +
+                    (penalties[ruleResult.severity] || 0) *
+                    Math.max(1, ruleResult.findingCount);
+            }, 0);
+
+        return Math.max(0, 100 - penalty);
+    }
+
+    function normalizeLevel(value) {
+        const level =
+            normalizeText(value).toLowerCase();
+
+        return Object.values(VALIDATION_LEVELS)
+            .includes(level)
+                ? level
+                : "";
     }
 
     /* ========================================================
@@ -861,8 +1025,55 @@ const ProfileValidation = (() => {
 
             requirePrimaryPhoto:
                 source.requirePrimaryPhoto ===
-                true
+                true,
+
+            rules:
+                normalizeRuleOverrides(
+                    source.rules
+                )
         };
+    }
+
+    function normalizeRuleOverrides(value) {
+        const source =
+            value &&
+            typeof value === "object" &&
+            !Array.isArray(value)
+                ? value
+                : {};
+
+        return Object.fromEntries(
+            Object.entries(source)
+                .filter(([id]) =>
+                    Object.prototype.hasOwnProperty.call(
+                        RULE_DEFINITIONS,
+                        id
+                    )
+                )
+                .map(([id, override]) => {
+                    const safeOverride =
+                        override &&
+                        typeof override === "object" &&
+                        !Array.isArray(override)
+                            ? override
+                            : {};
+
+                    return [id, {
+                        enabled:
+                            safeOverride.enabled !== false,
+                        severity:
+                            normalizeLevel(
+                                safeOverride.severity
+                            ) ||
+                            RULE_DEFINITIONS[id].severity,
+                        section:
+                            normalizeText(
+                                safeOverride.section
+                            ) ||
+                            RULE_DEFINITIONS[id].section
+                    }];
+                })
+        );
     }
 
     /* ========================================================
@@ -978,7 +1189,8 @@ const ProfileValidation = (() => {
             VALIDATION_LEVELS,
             PROFILE_STATUS,
             MINIMUM_IDENTITY_COMPLETENESS,
-            MINIMUM_REFERENCE_PHOTOS
+            MINIMUM_REFERENCE_PHOTOS,
+            RULE_DEFINITIONS
         })
     });
 
