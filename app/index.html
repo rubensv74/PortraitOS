@@ -1116,21 +1116,63 @@
 
                     </div>
 
-                    <article class="card knowledge-pack-card">
+                    <article class="card knowledge-workspace" data-knowledge-workspace>
 
-                        <header class="card__header">
+                        <header class="card__header knowledge-workspace__header">
                             <div>
-                                <h3>Knowledge Pack</h3>
-                                <p>Aplica una base creativa reutilizable sin modificar la identidad permanente.</p>
+                                <span class="panel-heading__eyebrow">Biblioteca creativa</span>
+                                <h3>Knowledge Packs</h3>
+                                <p>Selecciona una base creativa reutilizable. La identidad permanente nunca se modifica.</p>
+                            </div>
+                            <div class="knowledge-workspace__active" data-knowledge-active-summary>
+                                <span>Pack activo</span>
+                                <strong>Sin pack</strong>
                             </div>
                         </header>
 
                         <div class="card__body">
-                            <div class="form-field">
-                                <label for="knowledge-pack-select">Pack creativo</label>
-                                <select id="knowledge-pack-select" data-knowledge-pack-select></select>
-                                <small data-knowledge-pack-description></small>
+                            <div class="knowledge-toolbar">
+                                <div class="form-field knowledge-toolbar__search">
+                                    <label for="knowledge-pack-search">Buscar packs</label>
+                                    <input
+                                        id="knowledge-pack-search"
+                                        type="search"
+                                        placeholder="Nombre, descripción o categoría"
+                                        autocomplete="off"
+                                        data-knowledge-search
+                                    >
+                                </div>
+                                <div class="form-field knowledge-toolbar__filter">
+                                    <label for="knowledge-pack-filter">Mostrar</label>
+                                    <select id="knowledge-pack-filter" data-knowledge-filter>
+                                        <option value="all">Todos</option>
+                                        <option value="compatible">Compatibles</option>
+                                        <option value="active">Activo</option>
+                                    </select>
+                                </div>
                             </div>
+
+                            <div class="knowledge-pack-grid" data-knowledge-pack-grid aria-live="polite"></div>
+
+                            <div class="knowledge-empty" data-knowledge-empty hidden>
+                                <strong>No hay packs que coincidan con la búsqueda.</strong>
+                                <span>Prueba con otro término o cambia el filtro.</span>
+                            </div>
+
+                            <aside class="knowledge-detail" data-knowledge-detail>
+                                <div>
+                                    <span class="knowledge-detail__eyebrow">Pack seleccionado</span>
+                                    <h4 data-knowledge-detail-name>Sin pack</h4>
+                                    <p data-knowledge-pack-description>Mantiene únicamente la dirección creativa definida en el perfil.</p>
+                                </div>
+                                <dl class="knowledge-detail__meta">
+                                    <div><dt>Versión</dt><dd data-knowledge-detail-version>1.0</dd></div>
+                                    <div><dt>Compatibilidad</dt><dd data-knowledge-detail-compatibility>Compatible</dd></div>
+                                    <div><dt>Estado</dt><dd data-knowledge-detail-status>Activo</dd></div>
+                                </dl>
+                            </aside>
+
+                            <select id="knowledge-pack-select" data-knowledge-pack-select hidden aria-hidden="true"></select>
                         </div>
 
                     </article>
