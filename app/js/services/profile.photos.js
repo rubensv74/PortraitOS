@@ -51,13 +51,34 @@ const ProfilePhotos = (() => {
 
         PhotoValidation.validateFile(file);
 
-        const dimensions =
-            await PhotoValidation.validateResolution(
-                file
+        const checksum =
+            await calculateChecksum(file);
+
+        if (
+            photos.some(
+                photo =>
+                    photo.checksum === checksum
+            )
+        ) {
+            throw createError(
+                "DUPLICATE_PHOTO",
+                "Esta fotografía ya existe en el perfil."
             );
+        }
 
         const metadata =
             await PhotoMetadata.extract(file);
+
+        const dimensions = {
+            width: metadata.image.width,
+            height: metadata.image.height,
+            orientation: metadata.image.orientation
+        };
+
+        PhotoValidation.validateDimensions(
+            dimensions.width,
+            dimensions.height
+        );
 
         const dataUrl =
             await PhotoReader.readAsDataURL(file);
@@ -80,6 +101,20 @@ const ProfilePhotos = (() => {
 
         const photo = {
             id: createPhotoId(),
+
+            filename: file.name || "",
+
+            mime: file.type || "",
+
+            width: dimensions.width,
+
+            height: dimensions.height,
+
+            orientation: dimensions.orientation,
+
+            filesize: file.size || 0,
+
+            checksum,
 
             name:
                 normalizeName(
@@ -775,6 +810,38 @@ const ProfilePhotos = (() => {
         }
 
         return collection;
+    }
+
+    async function calculateChecksum(file) {
+        const buffer =
+            await PhotoReader.readAsArrayBuffer(file);
+
+        if (window.crypto?.subtle) {
+            const digest =
+                await window.crypto.subtle.digest(
+                    "SHA-256",
+                    buffer
+                );
+
+            return Array.from(
+                new Uint8Array(digest)
+            ).map(
+                value =>
+                    value.toString(16).padStart(2, "0")
+            ).join("");
+        }
+
+        const bytes = new Uint8Array(buffer);
+        let first = 2166136261;
+        let second = 0x9e3779b9;
+
+        bytes.forEach(value => {
+            first ^= value;
+            first = Math.imul(first, 16777619);
+            second = Math.imul(second ^ value, 2246822519);
+        });
+
+        return `fallback-${(first >>> 0).toString(16).padStart(8, "0")}${(second >>> 0).toString(16).padStart(8, "0")}`;
     }
 
     function validateProfile(profile) {

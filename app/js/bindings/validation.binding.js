@@ -2440,10 +2440,7 @@ const ValidationBinding = (() => {
 
         const invalidatingEvents = [
             "profile:updated",
-            "profile:photo-added",
-            "profile:photo-removed",
-            "profile:photos-reordered",
-            "profile:primary-photo-changed",
+            "photos:changed",
             "identity:field-updated",
             "identity:locked",
             "identity:unlocked",

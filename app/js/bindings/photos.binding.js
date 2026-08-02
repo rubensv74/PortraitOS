@@ -70,6 +70,8 @@ const PhotosBinding = (() => {
     let subscriptions = [];
     let processing = false;
     let dragDepth = 0;
+    let operationId = 0;
+    let selectedPhotoId = null;
 
     /* ========================================================
        INICIALIZACIÓN
@@ -137,6 +139,11 @@ const PhotosBinding = (() => {
         );
 
         gallery?.removeEventListener(
+            "keydown",
+            handleGalleryKeydown
+        );
+
+        gallery?.removeEventListener(
             "dragstart",
             handleCardDragStart
         );
@@ -167,6 +174,8 @@ const PhotosBinding = (() => {
         initialized = false;
         processing = false;
         dragDepth = 0;
+        operationId += 1;
+        selectedPhotoId = null;
 
         input = null;
         dropzone = null;
@@ -237,6 +246,11 @@ const PhotosBinding = (() => {
         gallery?.addEventListener(
             "click",
             handleGalleryClick
+        );
+
+        gallery?.addEventListener(
+            "keydown",
+            handleGalleryKeydown
         );
 
         gallery?.addEventListener(
@@ -373,6 +387,11 @@ const PhotosBinding = (() => {
         }
 
         switch (action) {
+            case "select":
+                selectedPhotoId = photoId;
+                render();
+                break;
+
             case "primary":
                 setPrimary(photoId);
                 break;
@@ -406,6 +425,18 @@ const PhotosBinding = (() => {
             default:
                 break;
         }
+    }
+
+    function handleGalleryKeydown(event) {
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        const selectable = event.target.closest("[data-photo-action='select']");
+        if (!selectable) return;
+
+        event.preventDefault();
+        const card = selectable.closest(SELECTORS.PHOTO_CARD);
+        selectedPhotoId = normalizeText(card?.dataset.photoId);
+        render();
     }
 
     function handleCardDragStart(event) {
@@ -521,6 +552,7 @@ const PhotosBinding = (() => {
         }
 
         processing = true;
+        const currentOperation = ++operationId;
 
         setLoading(
             true,
@@ -578,6 +610,14 @@ const PhotosBinding = (() => {
                 const file of
                 acceptedFiles
             ) {
+                if (currentOperation !== operationId) {
+                    rejected.push({
+                        file,
+                        reason: "cancelled"
+                    });
+                    continue;
+                }
+
                 const validation =
                     validatePhotoFile(
                         file
@@ -596,26 +636,25 @@ const PhotosBinding = (() => {
                 }
 
                 try {
-                    const photo =
-                        await createPhotoRecord(
-                            file
-                        );
-
                     const stored =
                         await persistPhoto(
-                            photo,
+                            null,
                             file
                         );
 
                     added.push(
-                        stored || photo
+                        stored
                     );
                 } catch (error) {
                     rejected.push({
                         file,
                         reason:
                             "processing",
-                        error
+                        error,
+                        errors: [{
+                            code: error?.code || "PHOTO_PROCESSING_FAILED",
+                            message: error?.message || "No se pudo procesar la fotografía."
+                        }]
                     });
 
                     emitError(
@@ -629,10 +668,6 @@ const PhotosBinding = (() => {
                     );
                 }
             }
-
-            ensurePrimaryPhoto();
-
-            render();
 
             if (added.length) {
                 notify(
@@ -652,18 +687,6 @@ const PhotosBinding = (() => {
                 );
             }
 
-            emit(
-                "binding:photos-added",
-                {
-                    added:
-                        clone(added),
-                    rejected:
-                        serializeRejected(
-                            rejected
-                        )
-                }
-            );
-
             return {
                 added,
                 rejected
@@ -676,6 +699,15 @@ const PhotosBinding = (() => {
     }
 
     function validatePhotoFile(file) {
+        if (
+            window.PhotoValidation &&
+            typeof PhotoValidation
+                .checkFile ===
+                "function"
+        ) {
+            return PhotoValidation.checkFile(file);
+        }
+
         if (
             window.PhotoValidation &&
             typeof PhotoValidation
@@ -1026,15 +1058,6 @@ const PhotosBinding = (() => {
             result = true;
         }
 
-        render();
-
-        emit(
-            "binding:photo-primary-changed",
-            {
-                photoId
-            }
-        );
-
         return result;
     }
 
@@ -1146,19 +1169,9 @@ const PhotosBinding = (() => {
             persistProfile(updated);
         }
 
-        ensurePrimaryPhoto();
-        render();
-
         notify(
             "Fotografía eliminada.",
             "success"
-        );
-
-        emit(
-            "binding:photo-removed",
-            {
-                photoId
-            }
         );
 
         return true;
@@ -1295,19 +1308,6 @@ const PhotosBinding = (() => {
 
             persistProfile(updated);
         }
-
-        render();
-
-        emit(
-            "binding:photos-reordered",
-            {
-                order:
-                    normalized.map(
-                        photo =>
-                            photo.id
-                    )
-            }
-        );
 
         return true;
     }
@@ -1482,6 +1482,9 @@ const PhotosBinding = (() => {
         const primary =
             isPrimaryPhoto(photo);
 
+        const selected =
+            selectedPhotoId === photo.id;
+
         const source =
             photo.thumbnail?.dataUrl ||
             photo.thumbnail ||
@@ -1496,12 +1499,19 @@ const PhotosBinding = (() => {
 
         return `
             <article
-                class="photo-card ${primary ? CLASSES.PRIMARY : ""}"
+                class="photo-card ${primary ? CLASSES.PRIMARY : ""} ${selected ? "is-selected" : ""}"
                 data-photo-id="${escapeAttribute(photo.id)}"
                 draggable="true"
+                aria-selected="${selected}"
             >
 
-                <div class="photo-card__preview">
+                <div
+                    class="photo-card__preview"
+                    data-photo-action="select"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Seleccionar ${escapeAttribute(name)}"
+                >
 
                     <img
                         src="${escapeAttribute(source)}"
@@ -1536,9 +1546,9 @@ const PhotosBinding = (() => {
                         ${escapeHtml(name)}
                     </strong>
 
-                    <span>
-                        ${escapeHtml(formatPhotoTechnicalSummary(photo))}
-                    </span>
+                    <span>${escapeHtml(formatPhotoTechnicalSummary(photo))}</span>
+
+                    <small>${escapeHtml(formatFileSize(photo.filesize ?? photo.source?.size ?? photo.size ?? 0))}</small>
 
                 </div>
 
@@ -1688,10 +1698,7 @@ const PhotosBinding = (() => {
         const events = [
             "profile:loaded",
             "profile:imported",
-            "profile:photo-added",
-            "profile:photo-removed",
-            "profile:photos-reordered",
-            "profile:primary-photo-changed"
+            "photos:changed"
         ];
 
         events.forEach(
@@ -1699,7 +1706,19 @@ const PhotosBinding = (() => {
                 subscriptions.push(
                     AppEvents.on(
                         eventName,
-                        render
+                        () => {
+                            if (
+                                eventName === "profile:loaded" ||
+                                eventName === "profile:imported"
+                            ) {
+                                operationId += 1;
+                                processing = false;
+                                selectedPhotoId = null;
+                                setLoading(false);
+                            }
+
+                            render();
+                        }
                     )
                 );
             }

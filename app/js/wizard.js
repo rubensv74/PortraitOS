@@ -1012,16 +1012,7 @@ const Wizard = (() => {
         );
 
         AppEvents.on(
-            "profile:photo-added",
-            () => {
-                invalidateFollowing(
-                    "photos"
-                );
-            }
-        );
-
-        AppEvents.on(
-            "profile:photo-removed",
+            "photos:changed",
             () => {
                 invalidateFollowing(
                     "photos"

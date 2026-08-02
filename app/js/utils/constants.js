@@ -607,6 +607,9 @@ const AppConstants = (() => {
         PRIMARY_PHOTO_CHANGED:
             "profile:primary-photo-changed",
 
+        PHOTOS_CHANGED:
+            "photos:changed",
+
         IDENTITY_UPDATED:
             "identity:updated",
 

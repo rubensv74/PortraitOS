@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>PortraitOS Sprint 1 tests</title></head>
+<body>
+<pre id="results" data-test-status="running">RUNNING</pre>
+<script>
+"use strict";
+
+const output = document.getElementById("results");
+const results = [];
+let stage = "clean";
+let expected = null;
+const keepAlive = window.setInterval(() => {}, 50);
+
+function render(final = false) {
+    const passed = results.filter(item => item.passed).length;
+    output.textContent = results.map(item => `${item.passed ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`).join("\n");
+    if (final) {
+        window.clearInterval(keepAlive);
+        output.dataset.testStatus = passed === results.length ? "passed" : "failed";
+        output.textContent += `\nSUMMARY ${passed}/${results.length}`;
+    }
+}
+
+function record(name, condition, detail = "") {
+    results.push({ name, passed: condition === true, detail });
+    render();
+    if (!condition) throw new Error(`${name}: ${detail}`);
+}
+
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+function createFrame() {
+    const frame = document.createElement("iframe");
+    frame.src = "../app/index.html";
+    frame.addEventListener("load", () => run(frame));
+    document.body.appendChild(frame);
+}
+
+function createImageFile(w, index) {
+    const canvas = w.document.createElement("canvas");
+    canvas.width = 640;
+    canvas.height = 640;
+    const context = canvas.getContext("2d");
+    context.fillStyle = `hsl(${index * 31}, 60%, 48%)`;
+    context.fillRect(0, 0, 640, 640);
+    context.fillStyle = "white";
+    context.font = "80px sans-serif";
+    context.fillText(String(index), 280, 350);
+    const encoded = canvas.toDataURL("image/png").split(",")[1];
+    const binary = w.atob(encoded);
+    const bytes = new Uint8Array(binary.length);
+    for (let offset = 0; offset < binary.length; offset += 1) bytes[offset] = binary.charCodeAt(offset);
+    return new w.File([bytes], `evidence-${index}.png`, { type: "image/png", lastModified: 1700000000000 + index });
+}
+
+async function run(frame) {
+    const w = frame.contentWindow;
+    try {
+        if (!w.document.documentElement.hasAttribute("data-portraitos-ready")) return;
+
+        if (stage === "clean") {
+            w.localStorage.clear();
+            stage = "test";
+            w.location.reload();
+            return;
+        }
+
+        if (stage === "reload") {
+            await wait(150);
+            const active = w.ProfileService.getActive();
+            const photos = w.ProfileService.photos.list();
+            record("recarga conserva perfil", active.id === expected.profileId, active.id);
+            record("recarga conserva 8 fotografías", photos.length === 8, String(photos.length));
+            record("recarga conserva principal", w.ProfileService.photos.getPrimary()?.id === expected.primaryId);
+            record("recarga conserva orden", photos.map(photo => photo.id).join(",") === expected.order.join(","));
+            record("metadatos persisten", photos.every(photo => photo.filename && photo.mime && photo.width === 640 && photo.height === 640 && photo.orientation === "square" && photo.filesize > 0 && photo.checksum));
+            record("bindings permanecen únicos", w.PhotosBinding.getState().initialized === true);
+            render(true);
+            return;
+        }
+
+        const runtimeErrors = [];
+        w.addEventListener("error", event => runtimeErrors.push(event.message));
+        w.addEventListener("unhandledrejection", event => runtimeErrors.push(String(event.reason)));
+
+        record("smoke ready", w.document.documentElement.dataset.portraitosReady === "true");
+        record("fachada de storage cargada", w.PhotoStorage.describe().migrationReady === true);
+        record("input permite selección múltiple", w.document.querySelector("[data-photo-input]").multiple === true);
+        record("drag and drop conectado", Boolean(w.document.querySelector(".photo-dropzone")));
+
+        let changeEvents = 0;
+        let validationEvents = 0;
+        const operations = [];
+        w.AppEvents.on("photos:changed", detail => {
+            changeEvents += 1;
+            operations.push(detail.operation);
+        });
+
+        w.AppEvents.on("validation:completed", () => { validationEvents += 1; });
+
+        w.document.querySelector("[data-prompt-readiness-score]").textContent = "999";
+        const files = [];
+        for (let index = 0; index < 10; index += 1) files.push(await createImageFile(w, index));
+        const imported = await w.PhotosBinding.addFiles(files);
+        await wait(100);
+        const importedPhotos = w.ProfileService.photos.list();
+        record("importa 10 fotografías", imported.added.length === 10 && importedPhotos.length === 10, `${imported.added.length}/${importedPhotos.length}`);
+        record("genera miniaturas", importedPhotos.every(photo => photo.thumbnail?.dataUrl?.startsWith("data:image/jpeg")));
+        record("genera checksum único", new Set(importedPhotos.map(photo => photo.checksum)).size === 10);
+        record("principal automática", w.ProfileService.photos.getPrimary()?.id === importedPhotos[0].id);
+        record("un evento por alta", changeEvents === 10 && operations.every(operation => operation === "add"), String(changeEvents));
+
+        const newPrimaryId = importedPhotos[5].id;
+        w.ProfileService.photos.setPrimary(newPrimaryId);
+        record("cambia fotografía principal", w.ProfileService.photos.getPrimary()?.id === newPrimaryId);
+
+        const reverseOrder = w.ProfileService.photos.list().map(photo => photo.id).reverse();
+        w.ProfileService.photos.reorder(reverseOrder);
+        record("persiste orden de dominio", w.ProfileService.photos.list()[0].id === reverseOrder[0]);
+
+        w.ProfileService.photos.remove(reverseOrder[1]);
+        w.ProfileService.photos.remove(reverseOrder[2]);
+        const remaining = w.ProfileService.photos.list();
+        record("eliminación segura", remaining.length === 8, String(remaining.length));
+        record("principal sigue válida", Boolean(w.ProfileService.photos.getPrimary()));
+
+        const duplicate = await w.PhotosBinding.addFiles([files[5]]);
+        const empty = new w.File([], "empty.png", { type: "image/png" });
+        const invalid = new w.File(["not-image"], "invalid.txt", { type: "text/plain" });
+        const corrupt = new w.File(["broken"], "corrupt.jpg", { type: "image/jpeg" });
+        const invalidResult = await w.PhotosBinding.addFiles([empty, invalid, corrupt]);
+        record("bloquea duplicado exacto", duplicate.added.length === 0 && duplicate.rejected[0]?.errors?.[0]?.code === "DUPLICATE_PHOTO");
+        record("bloquea vacío, formato y corrupción", invalidResult.added.length === 0 && invalidResult.rejected.length === 3, invalidResult.rejected.map(item => item.errors?.[0]?.code).join(","));
+
+        await wait(100);
+        const readinessAfter = w.ProfileValidation.getGenerationReadiness().score;
+        record("Validation reacciona automáticamente", w.ValidationBinding.getState().score === readinessAfter);
+        record("Prompt Readiness reacciona", Number(w.document.querySelector("[data-prompt-readiness-score]").textContent) === readinessAfter);
+        record("Identity obtiene principal", w.ProfileService.photos.getPrimary()?.id === newPrimaryId);
+        record("Validation se recalcula por evento", validationEvents > 0, String(validationEvents));
+
+        const profileAId = w.ProfileService.getActive().id;
+        const cancellationFile = createImageFile(w, 30);
+        const pendingImport = w.PhotosBinding.addFiles([cancellationFile]);
+        w.ProfileManager.create({ name: "Perfil B" });
+        const profileBId = w.ProfileService.getActive().id;
+        const cancelledImport = await pendingImport;
+        record("cambio de perfil cancela importación segura", cancelledImport.added.length === 0 && w.ProfileService.photos.list().length === 0);
+        const fileB = await createImageFile(w, 20);
+        await w.PhotosBinding.addFiles([fileB]);
+        record("Perfil B contiene solo sus fotos", w.ProfileService.photos.list().length === 1);
+        w.ProfileManager.select(profileAId);
+        record("Perfil A conserva sus fotos", w.ProfileService.photos.list().length === 8);
+        w.ProfileManager.select(profileBId);
+        record("aislamiento bidireccional", w.ProfileService.photos.list().length === 1 && w.ProfileService.photos.list()[0].filename === "evidence-20.png");
+        w.ProfileManager.select(profileAId);
+
+        record("eventos de mutación son unitarios", changeEvents === 15, String(changeEvents));
+        record("sin excepciones de consola", runtimeErrors.length === 0, runtimeErrors.join(" | "));
+
+        const finalPhotos = w.ProfileService.photos.list();
+        expected = {
+            profileId: profileAId,
+            primaryId: w.ProfileService.photos.getPrimary().id,
+            order: finalPhotos.map(photo => photo.id)
+        };
+        stage = "reload";
+        w.location.reload();
+    } catch (error) {
+        results.push({ name: "runner", passed: false, detail: error.stack || error.message });
+        render(true);
+    }
+}
+
+createFrame();
+</script>
+</body>
+</html>

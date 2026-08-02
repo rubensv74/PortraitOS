@@ -332,9 +332,16 @@ const ProfileService = (() => {
                         options
                     );
 
-                emit(
-                    "profile:photo-added",
-                    photo
+                if (getMutableActive().id !== profile.id) {
+                    throw createError(
+                        "PHOTO_IMPORT_CANCELLED",
+                        "La importación se canceló porque cambió el perfil activo."
+                    );
+                }
+
+                commitPhotosChange(
+                    "add",
+                    { photoId: photo.id }
                 );
 
                 return photo;
@@ -355,9 +362,16 @@ const ProfileService = (() => {
                         options
                     );
 
-                emit(
-                    "profile:photos-added",
-                    clone(added)
+                if (getMutableActive().id !== profile.id) {
+                    throw createError(
+                        "PHOTO_IMPORT_CANCELLED",
+                        "La importación se canceló porque cambió el perfil activo."
+                    );
+                }
+
+                commitPhotosChange(
+                    "add-many",
+                    { photoIds: added.map(photo => photo.id) }
                 );
 
                 return added;
@@ -375,9 +389,9 @@ const ProfileService = (() => {
                         changes
                     );
 
-                emit(
-                    "profile:photo-updated",
-                    result
+                commitPhotosChange(
+                    "update",
+                    { photoId: result.id }
                 );
 
                 return result;
@@ -391,9 +405,9 @@ const ProfileService = (() => {
                         photoId
                     );
 
-                emit(
-                    "profile:photo-removed",
-                    result
+                commitPhotosChange(
+                    "remove",
+                    { photoId: result.id }
                 );
 
                 return result;
@@ -407,9 +421,9 @@ const ProfileService = (() => {
                         photoId
                     );
 
-                emit(
-                    "profile:primary-photo-changed",
-                    result
+                commitPhotosChange(
+                    "set-primary",
+                    { photoId: result.id }
                 );
 
                 return result;
@@ -417,10 +431,17 @@ const ProfileService = (() => {
 
         reorder:
             function (orderedIds) {
-                return ProfilePhotos.reorder(
+                const result = ProfilePhotos.reorder(
                     getMutableActive(),
                     orderedIds
                 );
+
+                commitPhotosChange(
+                    "reorder",
+                    { order: result.map(photo => photo.id) }
+                );
+
+                return result;
             },
 
         move:
@@ -428,11 +449,18 @@ const ProfileService = (() => {
                 photoId,
                 targetIndex
             ) {
-                return ProfilePhotos.move(
+                const result = ProfilePhotos.move(
                     getMutableActive(),
                     photoId,
                     targetIndex
                 );
+
+                commitPhotosChange(
+                    "move",
+                    { photoId, targetIndex }
+                );
+
+                return result;
             },
 
         get:
@@ -459,9 +487,16 @@ const ProfileService = (() => {
 
         clear:
             function () {
-                return ProfilePhotos.clear(
+                const result = ProfilePhotos.clear(
                     getMutableActive()
                 );
+
+                commitPhotosChange(
+                    "clear",
+                    { photoIds: result.map(photo => photo.id) }
+                );
+
+                return result;
             },
 
         summary:
@@ -472,6 +507,23 @@ const ProfileService = (() => {
             }
 
     });
+
+    function commitPhotosChange(operation, detail = {}) {
+        if (window.PhotoStorage?.persistActive) {
+            PhotoStorage.persistActive();
+        }
+
+        const profile = getMutableActive();
+        const summary = ProfilePhotos.getSummary(profile);
+
+        emit("photos:changed", {
+            profileId: profile.id,
+            operation,
+            ...clone(detail),
+            primaryPhoto: ProfilePhotos.getPrimary(profile),
+            summary
+        });
+    }
 
     /* ========================================================
        IDENTIDAD
