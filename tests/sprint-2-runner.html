@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>PortraitOS Sprint 2 tests</title></head>
+<body><pre id="results" data-test-status="running">RUNNING</pre>
+<script>
+"use strict";
+const output = document.getElementById("results");
+const results = [];
+const keepAlive = window.setInterval(() => {}, 50);
+let stage = "clean";
+let expected = {};
+
+function render(final = false) {
+    const passed = results.filter(item => item.passed).length;
+    output.textContent = results.map(item => `${item.passed ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`).join("\n");
+    if (final) {
+        clearInterval(keepAlive);
+        output.dataset.testStatus = passed === results.length ? "passed" : "failed";
+        output.textContent += `\nSUMMARY ${passed}/${results.length}`;
+    }
+}
+function record(name, condition, detail = "") {
+    results.push({ name, passed: condition === true, detail }); render();
+    if (!condition) throw new Error(`${name}: ${detail}`);
+}
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function createFrame() {
+    const old = document.querySelector("iframe"); old?.remove();
+    const frame = document.createElement("iframe"); frame.src = "../app/index.html";
+    frame.addEventListener("load", () => run(frame)); document.body.append(frame);
+}
+
+function createImageFile(w, index) {
+    const canvas = w.document.createElement("canvas"); canvas.width = 640; canvas.height = 640;
+    const context = canvas.getContext("2d"); context.fillStyle = `hsl(${index * 47}, 58%, 44%)`; context.fillRect(0, 0, 640, 640);
+    context.fillStyle = "white"; context.font = "80px sans-serif"; context.fillText(String(index), 280, 350);
+    const binary = w.atob(canvas.toDataURL("image/png").split(",")[1]);
+    const bytes = new Uint8Array(binary.length); for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return new w.File([bytes], `identity-evidence-${index}.png`, { type: "image/png", lastModified: 1710000000000 + index });
+}
+
+function completeIdentity(w, prefix) {
+    w.ProfileService.identity.updateGeneral({ summary: `${prefix} identidad permanente documentada`, ageAppearance: "40-45" });
+    Object.values(w.ProfileIdentity.constants.IDENTITY_SECTIONS).forEach(section => {
+        w.ProfileService.identity.updateSection(section, { description: `${prefix} rasgo permanente ${section}`, confidence: "high" });
+    });
+    w.ProfileManager.saveActive();
+}
+
+function linkCriticalEvidence(w, photoId, prefix) {
+    w.ProfileIdentity.constants.CRITICAL_EVIDENCE_SECTIONS.forEach(section => {
+        w.ProfileService.identity.linkEvidence(section, photoId, { note: `${prefix} ${section}` });
+    });
+}
+
+function preparePromptProfile(w) {
+    const profile = w.ProfileService.getActive();
+    profile.photos = profile.identity.photos;
+    profile.identity.evidenceState = w.ProfileIdentity.getEvidenceState(profile);
+    profile.validation = { score: 100, status: "ready", validatedAt: new Date().toISOString() };
+    profile.direction = {
+        status: "ready", objective: "Retrato editorial", format: "portrait-4-5", mood: "confident",
+        lighting: { type: "studio", contrast: "medium", notes: "soft" },
+        camera: { shotType: "headshot", angle: "eye-level", lens: "85 mm", focalLength: "85 mm", depthOfField: "natural" },
+        composition: { format: "portrait-4-5", aspectRatio: "portrait-4-5", framing: "centered", notes: "balanced" },
+        background: { type: "studio", depth: "separated", description: "neutral" },
+        wardrobe: { style: "professional", colors: ["navy"], description: "minimal", garments: [] },
+        pose: { position: "three-quarter", bodyPosition: "three-quarter", expression: "confident", notes: "natural" },
+        treatment: { mood: "confident", realism: "photorealistic", notes: "minimal" }, constraints: [], references: []
+    };
+    return profile;
+}
+
+async function run(frame) {
+    const w = frame.contentWindow;
+    try {
+        if (!w.document.documentElement.hasAttribute("data-portraitos-ready")) return;
+        if (stage === "clean") { w.localStorage.clear(); stage = "scenario-a"; w.location.reload(); return; }
+
+        if (stage === "reload-a") {
+            await wait(100);
+            const identity = w.ProfileService.identity.get();
+            const state = w.ProfileService.identity.getEvidenceState();
+            record("A recarga conserva perfil", w.ProfileService.getActive().id === expected.profileAId);
+            record("A recarga conserva cinco fotos", w.ProfileService.photos.list().length === 5);
+            record("A recarga conserva rasgos", identity.sections.face.description.includes("Perfil A"));
+            record("A recarga conserva evidencias", state.validEvidenceCount === 8, String(state.validEvidenceCount));
+            record("A recarga conserva coverage", state.score === 90, String(state.score));
+            record("A recarga conserva lock", identity.locked === true && identity.lockedEvidenceVersion === "portraitos.identity-evidence.v1");
+
+            const lockedDescription = identity.sections.face.description;
+            let editBlocked = false;
+            try { w.ProfileService.identity.updateSection("face", { description: "No debe cambiar" }); } catch (error) { editBlocked = error.code === "IDENTITY_LOCKED"; }
+            record("lock impide edición", editBlocked && w.ProfileService.identity.getSection("face").description === lockedDescription);
+
+            let unlockEvents = 0; w.AppEvents.on("identity:unlocked", () => { unlockEvents += 1; });
+            const unlockPromise = w.IdentityBinding.unlock(); await wait(20);
+            w.document.querySelector("[data-confirm='accept']")?.click(); await unlockPromise;
+            w.ProfileService.identity.updateSection("face", { description: "Perfil A rostro editado tras desbloqueo" });
+            w.ProfileManager.saveActive();
+            record("desbloqueo confirma y permite editar", !w.ProfileService.identity.isLocked() && w.ProfileService.identity.getSection("face").description.includes("editado"));
+            record("desbloqueo emite un evento", unlockEvents === 1, String(unlockEvents));
+
+            const linkedPhotoId = expected.linkedPhotoId;
+            w.ProfileService.photos.remove(linkedPhotoId); await wait(50);
+            const brokenState = w.ProfileService.identity.getEvidenceState();
+            record("eliminar foto conserva referencias", brokenState.totalEvidenceCount === 8);
+            record("referencias quedan missing", brokenState.invalidEvidenceCount === 8, String(brokenState.invalidEvidenceCount));
+            record("coverage se reduce", brokenState.score === 0, String(brokenState.score));
+            const brokenReadiness = w.ProfileValidation.getGenerationReadiness();
+            record("Validation detecta evidencia rota", brokenReadiness.errors.some(item => item.code === "IDENTITY_EVIDENCE_MISSING"));
+            record("Prompt Readiness se actualiza", Number(w.document.querySelector("[data-prompt-readiness-score]").textContent) === brokenReadiness.score);
+            record("rasgo no se elimina", w.ProfileService.identity.getSection("face").description.includes("editado"));
+
+            await runRemainingScenarios(w);
+            return;
+        }
+
+        if (stage === "final-reload") {
+            await wait(100);
+            record("reload final conserva perfil histórico", w.ProfileService.getActive().id === expected.historicalId);
+            record("reload final conserva rasgo histórico", w.ProfileService.identity.getSection("face").description === "Rostro histórico preservado");
+            record("reload final conserva evidencia histórica añadida", w.ProfileService.identity.getEvidence("face").length === 1);
+            record("bindings únicos tras navegación", w.IdentityBinding.getState().initialized === true);
+            render(true); return;
+        }
+
+        const runtimeErrors = []; w.addEventListener("error", e => runtimeErrors.push(e.message)); w.addEventListener("unhandledrejection", e => runtimeErrors.push(String(e.reason)));
+        record("smoke ready", w.document.documentElement.dataset.portraitosReady === "true");
+        record("contrato Evidence cargado", w.ProfileIdentity.constants.EVIDENCE_VERSION === "portraitos.identity-evidence.v1");
+        const files = []; for (let i = 0; i < 5; i += 1) files.push(createImageFile(w, i));
+        const imported = await w.PhotosBinding.addFiles(files);
+        record("A importa cinco fotografías", imported.added.length === 5);
+        const primary = w.ProfileService.photos.getPrimary();
+        completeIdentity(w, "Perfil A");
+        linkCriticalEvidence(w, primary.id, "A");
+        const state = w.ProfileService.identity.getEvidenceState();
+        record("A vincula ocho secciones críticas", state.validEvidenceCount === 8);
+        record("coverage ponderada explícita", state.score === 90 && state.readyForLock, JSON.stringify({ score: state.score, covered: state.coveredSections }));
+        record("Evidence no copia Data URLs", !JSON.stringify(w.ProfileService.identity.getEvidence()).includes("data:image"));
+        const validation = w.ProfileService.identity.validate("Sprint 2 runner");
+        record("validación formal completa", validation.status === "validated");
+        let confirmationRequired = false;
+        try { w.ProfileService.identity.lock({ lockedBy: "runner" }); } catch (error) { confirmationRequired = error.code === "LOCK_CONFIRMATION_REQUIRED"; }
+        record("lock exige confirmación", confirmationRequired);
+        const locked = w.ProfileService.identity.lock({ confirm: true, lockedBy: "runner" });
+        record("lock válido", locked.locked === true && Boolean(locked.lockedAt) && Boolean(locked.lockedEvidenceVersion));
+        const contractText = JSON.stringify(w.ProfileService.identity.contract());
+        record("contrato Prompt no contiene binarios ni checksums", !contractText.includes("data:image") && !contractText.includes(primary.checksum));
+        const portraitContract = w.PromptBuilder.build(preparePromptProfile(w));
+        const compiled = w.PromptCompiler.compile(portraitContract);
+        record("Prompt Builder consume coverage estructural", portraitContract.subject.identity.evidence.coverage === 90);
+        record("Compiler conserva auditoría sin contaminar texto", compiled.metadata.identityEvidence.coverage === 90 && !compiled.prompt.includes(primary.id) && !compiled.prompt.includes(primary.checksum));
+        record("sin excepciones escenario A", runtimeErrors.length === 0, runtimeErrors.join(" | "));
+        expected = { profileAId: w.ProfileService.getActive().id, linkedPhotoId: primary.id };
+        stage = "reload-a"; w.location.reload();
+    } catch (error) {
+        results.push({ name: "runner", passed: false, detail: error.stack || error.message }); render(true);
+    }
+}
+
+async function runRemainingScenarios(w) {
+    const profileAId = expected.profileAId;
+    w.ProfileManager.create({ name: "Perfil B" }); const profileBId = w.ProfileService.getActive().id;
+    await w.PhotosBinding.addFiles([createImageFile(w, 20)]); completeIdentity(w, "Perfil B");
+    const photoB = w.ProfileService.photos.getPrimary(); linkCriticalEvidence(w, photoB.id, "B");
+    record("B tiene evidencia propia", w.ProfileService.identity.getEvidenceState().validEvidenceCount === 8);
+    w.ProfileManager.select(profileAId); record("A no recibe evidencia B", w.ProfileService.identity.getEvidence("face").every(item => item.photoId !== photoB.id));
+    w.ProfileManager.select(profileBId); record("B conserva aislamiento", w.ProfileService.identity.getEvidence("face")[0].profileId === profileBId);
+
+    const duplicate = w.ProfileManager.duplicate(profileBId, { name: "Perfil B copia" });
+    record("duplicación reasigna propietario", w.ProfileService.identity.getEvidence("face")[0].profileId === duplicate.id && w.ProfileService.identity.getEvidenceState().validEvidenceCount === 8);
+    record("duplicación desbloquea identidad", w.ProfileService.identity.isLocked() === false);
+    w.ProfileManager.select(profileBId);
+
+    const mismatchProfile = w.ProfileService.getActive(); mismatchProfile.identity.evidence.face[0].checksum = "checksum-alterado";
+    w.ProfileService.load(mismatchProfile); w.ProfileManager.saveActive();
+    const mismatch = w.ProfileService.identity.getEvidenceState();
+    record("checksum mismatch detectado", mismatch.sections.face.evidence[0].integrity === "checksum_mismatch");
+    w.ProfileService.identity.validate("runner");
+    let mismatchBlocked = false;
+    try { w.ProfileService.identity.lock({ confirm: true, lockedBy: "runner" }); } catch (error) { mismatchBlocked = error.code === "IDENTITY_EVIDENCE_NOT_READY"; }
+    record("checksum crítico impide lock", mismatchBlocked);
+    record("Validation coherente con mismatch", w.ProfileValidation.getGenerationReadiness().errors.some(item => item.code === "IDENTITY_EVIDENCE_CHECKSUM_MISMATCH"));
+
+    w.ProfileManager.create({ name: "Perfil histórico" }); const historicalId = w.ProfileService.getActive().id;
+    const historical = w.ProfileService.getActive(); historical.identity.sections.face.description = "Rostro histórico preservado";
+    delete historical.identity.evidence; delete historical.identity.evidenceVersion; historical.identity.sections.face.sourcePhotoIds = [];
+    w.ProfileService.load(historical);
+    record("normalización histórica crea Evidence", Boolean(w.ProfileService.identity.get().evidence));
+    record("normalización histórica conserva rasgos", w.ProfileService.identity.getSection("face").description === "Rostro histórico preservado");
+    const historicalPhoto = createImageFile(w, 40); await w.PhotosBinding.addFiles([historicalPhoto]);
+    const historicalPhotoId = w.ProfileService.photos.getPrimary().id;
+    let evidenceEvents = 0; w.AppEvents.on("identity:evidence-updated", () => { evidenceEvents += 1; });
+    for (const step of ["identity", "photos", "identity", "profile", "identity"]) w.Wizard.goTo(step, { force: true });
+    w.IdentityBinding.init(); w.IdentityBinding.init();
+    w.ProfileService.identity.linkEvidence("face", historicalPhotoId, { note: "Migración compatible" });
+    record("una vinculación produce un evento", evidenceEvents === 1, String(evidenceEvents));
+    record("sin evidencia duplicada", w.ProfileService.identity.getEvidence("face").length === 1);
+    record("adaptador sourcePhotoIds sincronizado", w.ProfileService.identity.getSection("face").sourcePhotoIds[0] === historicalPhotoId);
+    expected.historicalId = historicalId; stage = "final-reload"; w.location.reload();
+}
+
+createFrame();
+</script></body></html>

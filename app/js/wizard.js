@@ -1030,6 +1030,15 @@ const Wizard = (() => {
         );
 
         AppEvents.on(
+            "identity:evidence-updated",
+            () => {
+                invalidateFollowing(
+                    "identity"
+                );
+            }
+        );
+
+        AppEvents.on(
             "direction:updated",
             () => {
                 invalidateFollowing(

@@ -636,6 +636,72 @@ const ProfileValidation = (() => {
             identity,
             findings
         );
+
+        validateIdentityEvidence(
+            profile,
+            findings
+        );
+    }
+
+    function validateIdentityEvidence(
+        profile,
+        findings
+    ) {
+        if (!window.ProfileIdentity?.getEvidenceState) return;
+
+        const identity = profile.identity;
+        const evidenceState =
+            ProfileIdentity.getEvidenceState(profile);
+        const legacyContract =
+            identity.evidenceLegacy === true ||
+            (identity.locked === true && !identity.lockedEvidenceVersion);
+
+        if (legacyContract) {
+            addFinding(
+                findings,
+                VALIDATION_LEVELS.WARNING,
+                "IDENTITY_EVIDENCE_LEGACY",
+                "La identidad usa referencias históricas todavía no verificadas por checksum.",
+                "profile.identity.evidence"
+            );
+        } else if (
+            evidenceState.score <
+            ProfileIdentity.constants.MINIMUM_EVIDENCE_COVERAGE
+        ) {
+            addFinding(
+                findings,
+                VALIDATION_LEVELS.ERROR,
+                "IDENTITY_EVIDENCE_COVERAGE_INSUFFICIENT",
+                `La cobertura visual es ${evidenceState.score} %; se requiere al menos ${ProfileIdentity.constants.MINIMUM_EVIDENCE_COVERAGE} % y cubrir todas las secciones críticas.`,
+                "profile.identity.evidence"
+            );
+        }
+
+        Object.entries(evidenceState.sections).forEach(
+            ([sectionName, section]) => {
+                section.evidence.forEach(record => {
+                    if (record.integrity === "legacy_unverified") {
+                        addFinding(
+                            findings,
+                            VALIDATION_LEVELS.WARNING,
+                            "IDENTITY_EVIDENCE_LEGACY_UNVERIFIED",
+                            `La evidencia de "${sectionName}" no tiene checksum verificable.`,
+                            `profile.identity.evidence.${sectionName}`
+                        );
+                    } else if (["missing", "checksum_mismatch", "wrong_profile"].includes(record.integrity)) {
+                        addFinding(
+                            findings,
+                            legacyContract
+                                ? VALIDATION_LEVELS.WARNING
+                                : VALIDATION_LEVELS.ERROR,
+                            `IDENTITY_EVIDENCE_${record.integrity.toUpperCase()}`,
+                            `La evidencia de "${sectionName}" tiene estado ${record.integrity}.`,
+                            `profile.identity.evidence.${sectionName}`
+                        );
+                    }
+                });
+            }
+        );
     }
 
     function validateIdentitySections(

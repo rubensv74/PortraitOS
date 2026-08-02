@@ -242,6 +242,7 @@ const PromptBinding = (() => {
             "profile:updated",
             "photos:changed",
             "identity:updated",
+            "identity:evidence-updated",
             "identity:locked",
             "identity:unlocked",
             "direction:updated",
@@ -463,6 +464,14 @@ const PromptBinding = (() => {
             validatedAt:
                 readiness.generatedAt
         };
+
+        if (
+            window.ProfileIdentity?.getEvidenceState &&
+            source.identity
+        ) {
+            source.identity.evidenceState =
+                ProfileIdentity.getEvidenceState(source);
+        }
 
         return source;
     }
