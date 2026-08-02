@@ -591,6 +591,41 @@ const ProfileService = (() => {
 
     const direction = Object.freeze({
 
+        replace:
+            changes => {
+                const profile =
+                    getMutableActive();
+
+                profile.direction =
+                    clone(
+                        changes &&
+                        typeof changes === "object"
+                            ? changes
+                            : {}
+                    );
+
+                ProfileDirection.initialize(
+                    profile
+                );
+
+                const result =
+                    ProfileDirection.get(
+                        profile
+                    );
+
+                emit(
+                    "direction:updated",
+                    {
+                        profileId:
+                            profile.id,
+                        direction:
+                            clone(result)
+                    }
+                );
+
+                return result;
+            },
+
         updateGeneral:
             changes =>
                 ProfileDirection.updateGeneral(

@@ -422,31 +422,15 @@ const UI = (() => {
                     .getActive();
 
             const result =
-                window.PromptBinding &&
-                typeof PromptBinding.generate ===
-                    "function"
-                    ? PromptBinding.generate(
-                        profile,
-                        {
-                            ...(typeof PromptBinding.getOptions === "function"
-                                ? PromptBinding.getOptions()
-                                : {}),
-                            saveHistory: true
-                        }
-                    )
-                    : PromptEngine.generate(
-                        profile,
-                        {
-                            strict: true
-                        }
-                    );
-
-            emit(
-                "prompt:generated",
-                {
-                    result
-                }
-            );
+                PromptBinding.generate(
+                    profile,
+                    {
+                        ...(typeof PromptBinding.getOptions === "function"
+                            ? PromptBinding.getOptions()
+                            : {}),
+                        saveHistory: true
+                    }
+                );
 
             notify(
                 "Contrato de retrato generado.",
@@ -627,7 +611,10 @@ const UI = (() => {
         subscriptions.push(
             AppEvents.on(
                 "profile:loaded",
-                render
+                detail => {
+                    render(detail);
+                    clearPromptResult();
+                }
             )
         );
 
@@ -1001,6 +988,24 @@ const UI = (() => {
                     </section>
                 `).join("")}
             </section>
+        `;
+    }
+
+    function clearPromptResult() {
+        const target =
+            document.querySelector(
+                "[data-prompt-output]"
+            );
+
+        if (!target) {
+            return;
+        }
+
+        target.innerHTML = `
+            <div class="empty-state">
+                <strong>Sin contrato generado.</strong>
+                <span>Valida el perfil activo antes de generar.</span>
+            </div>
         `;
     }
 
@@ -1984,7 +1989,7 @@ const UI = (() => {
         const dependencies = [
             "Wizard",
             "ProfileService",
-            "PromptEngine"
+            "PromptBinding"
         ];
 
         const missing =

@@ -16,8 +16,8 @@ const PromptBinding = (() => {
     const VERSION = "1.0.0";
 
     const EVENTS = Object.freeze({
-        GENERATED: "portraitos:prompt:generated",
-        FAILED: "portraitos:prompt:failed"
+        GENERATED: "prompt:generated",
+        FAILED: "prompt:failed"
     });
 
     const DEFAULT_OPTIONS = Object.freeze({
@@ -105,9 +105,12 @@ const PromptBinding = (() => {
             throw createReadinessError(readiness);
         }
 
-        const sourceProfile = applyKnowledgePack(
-            resolvedProfile,
-            options
+        const sourceProfile = normalizePipelineProfile(
+            applyKnowledgePack(
+                resolvedProfile,
+                options
+            ),
+            readiness
         );
         const normalizedOptions = normalizeOptions(options);
 
@@ -237,16 +240,35 @@ const PromptBinding = (() => {
             "profile:loaded",
             "profile:cleared",
             "profile:updated",
-            "portraitos:profile:changed",
-            "portraitos:photos:changed",
-            "portraitos:identity:changed",
-            "portraitos:direction:changed"
+            "profile:photo-added",
+            "profile:photo-removed",
+            "identity:updated",
+            "identity:locked",
+            "identity:unlocked",
+            "direction:updated",
+            "knowledge-pack:changed"
         ].forEach(eventName => {
             window.addEventListener(eventName, () => {
+                if (
+                    eventName === "profile:loaded" ||
+                    eventName === "profile:cleared"
+                ) {
+                    lastResult = null;
+                }
                 updateWorkspaceStatus();
                 updateReadinessPanel();
             });
         });
+
+        window.addEventListener(
+            "validation:completed",
+            event => {
+                updateReadinessPanel(
+                    event.detail
+                        ?.readiness
+                );
+            }
+        );
 
         bound = true;
     }
@@ -366,7 +388,15 @@ const PromptBinding = (() => {
         let count = 0;
         try {
             const snapshot = window.PromptHistoryService?.getSnapshot?.();
-            count = Array.isArray(snapshot?.entries) ? snapshot.entries.length : 0;
+            count = Number.isFinite(
+                Number(
+                    snapshot?.entryCount
+                )
+            )
+                ? Number(
+                    snapshot.entryCount
+                )
+                : 0;
         } catch {
             count = 0;
         }
@@ -408,6 +438,34 @@ const PromptBinding = (() => {
             profile,
             options.knowledgePackId
         );
+    }
+
+    function normalizePipelineProfile(
+        profile,
+        readiness
+    ) {
+        const source = clone(profile);
+
+        if (
+            !Array.isArray(source.photos)
+        ) {
+            source.photos = clone(
+                source.identity?.photos ||
+                []
+            );
+        }
+
+        source.validation = {
+            ...(source.validation || {}),
+            score: readiness.score,
+            status: readiness.status,
+            canGeneratePrompt:
+                readiness.ready === true,
+            validatedAt:
+                readiness.generatedAt
+        };
+
+        return source;
     }
 
     function normalizeOptions(options) {

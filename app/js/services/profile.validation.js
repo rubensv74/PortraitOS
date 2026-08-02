@@ -166,14 +166,21 @@ const ProfileValidation = (() => {
             profileId: profile.id || profile.profileId || null,
             profileName: profile.name || profile.profileName || "",
             summary: {
+                blockers: report.summary.errorCount,
                 errors: report.summary.errorCount,
                 warnings: report.summary.warningCount,
                 info: report.summary.infoCount,
                 total: report.summary.totalFindings
             },
+            blockers: clone(report.errors),
             errors: clone(report.errors),
             warnings: clone(report.warnings),
+            info: clone(report.information),
             information: clone(report.information),
+            recommendations: clone([
+                ...report.warnings,
+                ...report.information
+            ]),
             rules: clone(report.rules),
             generatedAt: report.validatedAt,
             report: options.includeReport === true ? clone(report) : undefined

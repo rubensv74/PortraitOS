@@ -124,6 +124,7 @@ const ValidationBinding = (() => {
 
     let initialized = false;
     let validating = false;
+    let validationTimer = null;
 
     let root = document;
     let panel = null;
@@ -168,6 +169,8 @@ const ValidationBinding = (() => {
             getState()
         );
 
+        scheduleValidation();
+
         return getState();
     }
 
@@ -207,6 +210,13 @@ const ValidationBinding = (() => {
         );
 
         subscriptions = [];
+
+        if (validationTimer !== null) {
+            window.clearTimeout(
+                validationTimer
+            );
+            validationTimer = null;
+        }
 
         panel = null;
         resultsElement = null;
@@ -335,6 +345,108 @@ const ValidationBinding = (() => {
        ======================================================== */
 
     async function validate(options = {}) {
+        if (validating) {
+            return getState();
+        }
+
+        validating = true;
+        setValidating(true);
+
+        try {
+            const readiness =
+                ProfileValidation
+                    .getGenerationReadiness(
+                        getActiveProfile(),
+                        {
+                            includeReport: true
+                        }
+                    );
+
+            const issues = [
+                ...mapCanonicalFindings(
+                    readiness.blockers,
+                    SEVERITY.BLOCKER
+                ),
+                ...mapCanonicalFindings(
+                    readiness.warnings,
+                    SEVERITY.WARNING
+                ),
+                ...mapCanonicalFindings(
+                    readiness.info,
+                    SEVERITY.INFO
+                )
+            ];
+
+            state = {
+                validated: true,
+                validating: false,
+                score: readiness.score,
+                status: readiness.status,
+                canGeneratePrompt:
+                    readiness.ready === true,
+                sections:
+                    createCanonicalSections(
+                        readiness,
+                        issues
+                    ),
+                issues,
+                counts: countIssues(issues),
+                validatedAt:
+                    readiness.generatedAt,
+                readiness: clone(readiness)
+            };
+
+            renderDashboard();
+            updateGenerateAction();
+
+            emit(
+                "validation:completed",
+                getState()
+            );
+
+            if (options.notify !== false) {
+                notifyValidationResult();
+            }
+
+            return getState();
+        } catch (error) {
+            state = {
+                ...createInitialState(),
+                status: "error",
+                issues: [
+                    createIssue({
+                        code:
+                            "GLOBAL_VALIDATION_FAILED",
+                        section: "contract",
+                        severity:
+                            SEVERITY.BLOCKER,
+                        message:
+                            error.message ||
+                            "No se pudo completar la validaciÃ³n global."
+                    })
+                ]
+            };
+            state.counts =
+                countIssues(
+                    state.issues
+                );
+
+            renderDashboard();
+            updateGenerateAction();
+            emitError(error, {
+                action:
+                    "global-validation"
+            });
+
+            return getState();
+        } finally {
+            validating = false;
+            setValidating(false);
+        }
+    }
+
+    /* Se conserva como adaptador de compatibilidad para la API histÃ³rica. */
+    async function validateLegacy(options = {}) {
         if (validating) {
             return getState();
         }
@@ -1438,6 +1550,121 @@ const ValidationBinding = (() => {
        SCORING
        ======================================================== */
 
+    function mapCanonicalFindings(
+        findings,
+        severity
+    ) {
+        return normalizeArray(findings)
+            .map(
+                finding =>
+                    createIssue({
+                        code:
+                            finding.code ||
+                            finding.id ||
+                            "VALIDATION_FINDING",
+                        section:
+                            finding.section ||
+                            "contract",
+                        severity,
+                        message:
+                            finding.message ||
+                            "Revisa los datos del perfil.",
+                        field:
+                            finding.path || "",
+                        action:
+                            finding.section || "",
+                        recommendation:
+                            severity ===
+                                SEVERITY.WARNING ||
+                            severity ===
+                                SEVERITY.INFO
+                                ? finding.message || ""
+                                : ""
+                    })
+            );
+    }
+
+    function createCanonicalSections(
+        readiness,
+        issues
+    ) {
+        const names = [
+            "profile",
+            "photos",
+            "identity",
+            "direction"
+        ];
+
+        const rules =
+            normalizeArray(
+                readiness.rules
+            );
+
+        const sections =
+            Object.fromEntries(
+                names.map(name => {
+                    const sectionRules =
+                        rules.filter(
+                            item =>
+                                item.section ===
+                                name
+                        );
+                    const passed =
+                        sectionRules.filter(
+                            item =>
+                                item.passed ===
+                                true
+                        ).length;
+                    const completeness =
+                        sectionRules.length
+                            ? Math.round(
+                                passed /
+                                sectionRules.length *
+                                100
+                            )
+                            : 100;
+
+                    return [
+                        name,
+                        createSectionResult(
+                            name,
+                            issues.filter(
+                                item =>
+                                    item.section ===
+                                    name
+                            ),
+                            completeness,
+                            {
+                                rules:
+                                    clone(
+                                        sectionRules
+                                    )
+                            }
+                        )
+                    ];
+                })
+            );
+
+        sections.contract =
+            createSectionResult(
+                "contract",
+                issues.filter(
+                    item =>
+                        !names.includes(
+                            item.section
+                        )
+                ),
+                readiness.score,
+                {
+                    ready:
+                        readiness.ready ===
+                        true
+                }
+            );
+
+        return sections;
+    }
+
     function calculateScore(
         sections = state.sections,
         issues = state.issues
@@ -2220,10 +2447,11 @@ const ValidationBinding = (() => {
             "identity:field-updated",
             "identity:locked",
             "identity:unlocked",
-            "direction:field-updated",
+            "direction:updated",
             "direction:preset-applied",
             "direction:preset-cleared",
-            "direction:reset"
+            "direction:reset",
+            "knowledge-pack:changed"
         ];
 
         invalidatingEvents.forEach(
@@ -2231,7 +2459,7 @@ const ValidationBinding = (() => {
                 subscriptions.push(
                     AppEvents.on(
                         eventName,
-                        invalidate
+                        scheduleValidation
                     )
                 );
             }
@@ -2240,22 +2468,14 @@ const ValidationBinding = (() => {
         subscriptions.push(
             AppEvents.on(
                 "profile:loaded",
-                detail => {
-                    loadStoredValidation(
-                        detail?.profile
-                    );
-                }
+                scheduleValidation
             )
         );
 
         subscriptions.push(
             AppEvents.on(
                 "profile:imported",
-                detail => {
-                    loadStoredValidation(
-                        detail?.profile
-                    );
-                }
+                scheduleValidation
             )
         );
 
@@ -2272,6 +2492,27 @@ const ValidationBinding = (() => {
                 validate
             )
         );
+    }
+
+    function scheduleValidation() {
+        invalidate();
+
+        if (validationTimer !== null) {
+            window.clearTimeout(
+                validationTimer
+            );
+        }
+
+        validationTimer =
+            window.setTimeout(
+                () => {
+                    validationTimer = null;
+                    validate({
+                        notify: false
+                    });
+                },
+                0
+            );
     }
 
     function invalidate() {
@@ -3317,7 +3558,8 @@ const ValidationBinding = (() => {
 
     function validateDependencies() {
         const required = [
-            "ProfileService"
+            "ProfileService",
+            "ProfileValidation"
         ];
 
         const missing =

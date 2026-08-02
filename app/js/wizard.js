@@ -710,10 +710,12 @@ const Wizard = (() => {
         const errors = [];
 
         try {
-            PromptEngine.generate(
+            PromptBinding.preview(
                 ProfileService.getActive(),
                 {
-                    strict: true
+                    ...(typeof PromptBinding.getOptions === "function"
+                        ? PromptBinding.getOptions()
+                        : {})
                 }
             );
         } catch (error) {
@@ -1415,7 +1417,7 @@ const Wizard = (() => {
     function validateDependencies() {
         const required = [
             "ProfileService",
-            "PromptEngine"
+            "PromptBinding"
         ];
 
         const missing =

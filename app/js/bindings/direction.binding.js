@@ -1449,9 +1449,7 @@ const DirectionBinding = (() => {
             options.validateDirection ===
                 true
         ) {
-            validateCreativeConstraints({
-                persist: true,
-                render: true,
+            validateAll({
                 notify: false
             });
         }
@@ -1467,21 +1465,6 @@ const DirectionBinding = (() => {
             scheduleAutosave();
         }
 
-        emit(
-            "direction:field-updated",
-            {
-                path,
-
-                value:
-                    clone(value),
-
-                direction:
-                    clone(
-                        updated.direction
-                    )
-            }
-        );
-
         return clone(
             updated.direction
         );
@@ -1494,12 +1477,36 @@ const DirectionBinding = (() => {
         const service =
             getDirectionService();
 
+        const mappedDirection =
+            mapDirectionToDomain(
+                direction,
+                profile ||
+                    getActiveProfile()
+            );
+
+        if (
+            typeof service.replace ===
+                "function"
+        ) {
+            syncing = true;
+
+            try {
+                service.replace(
+                    mappedDirection
+                );
+            } finally {
+                syncing = false;
+            }
+
+            return;
+        }
+
         if (
             typeof service.update ===
                 "function"
         ) {
             service.update(
-                direction
+                mappedDirection
             );
 
             return;
@@ -1510,7 +1517,7 @@ const DirectionBinding = (() => {
                 "function"
         ) {
             service.set(
-                direction
+                mappedDirection
             );
 
             return;
@@ -1522,7 +1529,7 @@ const DirectionBinding = (() => {
                 "function"
         ) {
             service.setDirection(
-                direction
+                mappedDirection
             );
 
             return;
@@ -1535,7 +1542,7 @@ const DirectionBinding = (() => {
             );
 
         updated.direction =
-            clone(direction);
+            clone(mappedDirection);
 
         persistProfile(updated);
     }
@@ -1925,17 +1932,19 @@ const DirectionBinding = (() => {
         );
 
         try {
-            const profile =
-                getActiveProfile();
-
             if (
+                window.ProfileManager &&
+                typeof ProfileManager
+                    .saveActive ===
+                    "function"
+            ) {
+                ProfileManager.saveActive();
+            } else if (
                 typeof ProfileService
                     .save ===
                     "function"
             ) {
-                ProfileService.save(
-                    profile
-                );
+                ProfileService.save();
             }
 
             dirty = false;
@@ -2696,7 +2705,7 @@ const DirectionBinding = (() => {
 
         updated.direction.status =
             result.valid
-                ? "validated"
+                ? "ready"
                 : "draft";
 
         persistDirection(
@@ -3318,6 +3327,15 @@ const DirectionBinding = (() => {
 
         subscriptions.push(
             AppEvents.on(
+                "profile:created",
+                profile => {
+                    load(profile);
+                }
+            )
+        );
+
+        subscriptions.push(
+            AppEvents.on(
                 "direction:updated",
                 () => {
                     if (!syncing) {
@@ -3576,6 +3594,85 @@ const DirectionBinding = (() => {
                 new Date()
                     .toISOString()
         };
+    }
+
+    /*
+     * El formulario conserva alias orientados a UI. El dominio utiliza
+     * nombres histÃ³ricos distintos para cinco valores. Este mapper es la
+     * Ãºnica frontera entre ambos contratos y conserva los alias para no
+     * romper presets ni consumidores existentes.
+     */
+    function mapDirectionToDomain(
+        direction,
+        profile = null
+    ) {
+        const mapped =
+            normalizeDirection(
+                direction
+            );
+
+        mapped.objective =
+            normalizeText(
+                mapped.objective ||
+                profile?.description ||
+                profile?.name
+            );
+
+        mapped.format =
+            normalizeText(
+                mapped.format ||
+                mapped.composition
+                    ?.format
+            );
+
+        mapped.mood =
+            normalizeText(
+                mapped.mood ||
+                mapped.treatment
+                    ?.mood
+            );
+
+        mapped.camera.focalLength =
+            normalizeText(
+                mapped.camera
+                    .focalLength ||
+                mapped.camera.lens
+            );
+
+        mapped.composition.aspectRatio =
+            normalizeText(
+                mapped.composition
+                    .aspectRatio ||
+                mapped.composition
+                    .format
+            );
+
+        mapped.pose.bodyPosition =
+            normalizeText(
+                mapped.pose
+                    .bodyPosition ||
+                mapped.pose.position
+            );
+
+        if (
+            typeof mapped.wardrobe
+                .colors === "string"
+        ) {
+            mapped.wardrobe.colors =
+                mapped.wardrobe.colors
+                    .split(",")
+                    .map(normalizeText)
+                    .filter(Boolean);
+        }
+
+        mapped.wardrobe.notes =
+            normalizeText(
+                mapped.wardrobe.notes ||
+                mapped.wardrobe
+                    .description
+            );
+
+        return mapped;
     }
 
     function normalizeDirection(
