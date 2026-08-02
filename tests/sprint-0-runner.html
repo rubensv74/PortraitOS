@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>PortraitOS Sprint 0 tests</title>
+</head>
+<body>
+    <h1>PortraitOS Sprint 0</h1>
+    <pre id="results" data-test-status="running">RUNNING</pre>
+    <script>
+        "use strict";
+
+        const output = document.getElementById("results");
+        const results = [];
+        let stage = "clean";
+        let expectedProfileId = "";
+        let generatedEvents = 0;
+
+        function record(name, passed, detail = "") {
+            results.push({ name, passed: passed === true, detail });
+            render();
+            if (!passed) throw new Error(`${name}: ${detail}`);
+        }
+
+        function render(final = false) {
+            const passed = results.filter(item => item.passed).length;
+            output.textContent = results
+                .map(item => `${item.passed ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`)
+                .join("\n");
+            if (final) {
+                output.dataset.testStatus = passed === results.length ? "passed" : "failed";
+                output.textContent += `\nSUMMARY ${passed}/${results.length}`;
+            }
+        }
+
+        function wait(milliseconds) {
+            return new Promise(resolve => setTimeout(resolve, milliseconds));
+        }
+
+        function createFrame() {
+            const previous = document.querySelector("iframe");
+            previous?.remove();
+            const frame = document.createElement("iframe");
+            frame.src = "../app/index.html";
+            frame.addEventListener("load", () => runFrame(frame));
+            document.body.appendChild(frame);
+        }
+
+        function createValidProfile(windowObject, name) {
+            const profile = windowObject.ProfileService.getActive();
+            profile.name = name;
+            profile.description = "Retrato profesional verificable";
+            profile.identity.summary = "Persona adulta con identidad permanente documentada";
+            profile.identity.ageAppearance = "40-45";
+            profile.identity.locked = true;
+            profile.identity.status = "locked";
+            Object.values(profile.identity.sections).forEach(section => {
+                section.description = "Rasgo permanente verificado";
+                section.confidence = "high";
+                section.sourcePhotoIds = ["photo-1"];
+            });
+            profile.identity.photos = [{
+                id: "photo-1",
+                name: "reference.png",
+                isPrimary: true,
+                primary: true,
+                source: { dataUrl: "data:image/png;base64,iVBORw0KGgo=" },
+                thumbnail: { dataUrl: "data:image/png;base64,iVBORw0KGgo=" },
+                dimensions: { width: 1024, height: 1024 },
+                metadata: { quality: { suitableForIdentity: true } }
+            }];
+            profile.direction = {
+                status: "ready",
+                objective: profile.description,
+                format: "portrait-4-5",
+                mood: "confident",
+                lighting: { type: "studio", contrast: "medium", notes: "Soft key" },
+                camera: { shotType: "headshot", angle: "eye-level", lens: "85 mm", focalLength: "85 mm", depthOfField: "natural" },
+                composition: { format: "portrait-4-5", aspectRatio: "portrait-4-5", framing: "centered", notes: "balanced" },
+                background: { type: "studio", depth: "separated", description: "neutral" },
+                wardrobe: { style: "professional", colors: ["navy", "white"], description: "minimal", garments: [] },
+                pose: { position: "three-quarter", bodyPosition: "three-quarter", expression: "confident", notes: "natural" },
+                treatment: { mood: "confident", realism: "photorealistic", notes: "minimal retouch" },
+                constraints: [],
+                references: []
+            };
+            return profile;
+        }
+
+        async function runFrame(frame) {
+            const windowObject = frame.contentWindow;
+            try {
+                if (!windowObject.document.documentElement.hasAttribute("data-portraitos-ready")) {
+                    return;
+                }
+
+                if (stage === "clean") {
+                    windowObject.localStorage.clear();
+                    stage = "test";
+                    windowObject.location.reload();
+                    return;
+                }
+
+                if (stage === "reload") {
+                    await wait(100);
+                    const restored = windowObject.ProfileService.getActive();
+                    record("reload conserva perfil activo", restored.id === expectedProfileId, restored.id);
+                    record("reload conserva lighting.type", restored.direction.lighting.type === "rembrandt", restored.direction.lighting.type);
+                    record("reload conserva camera.lens", restored.direction.camera.lens === "105 mm", restored.direction.camera.lens);
+                    record("bindings siguen inicializados una vez", windowObject.DirectionBinding.getState().initialized && windowObject.ValidationBinding.getState().initialized);
+                    render(true);
+                    return;
+                }
+
+                const runtimeErrors = [];
+                windowObject.addEventListener("error", event => runtimeErrors.push(event.message));
+                windowObject.addEventListener("unhandledrejection", event => runtimeErrors.push(String(event.reason)));
+
+                record("smoke ready", windowObject.document.documentElement.dataset.portraitosReady === "true");
+                record("DirectionBinding cargado", Boolean(windowObject.DirectionBinding));
+                record("ValidationBinding cargado", Boolean(windowObject.ValidationBinding));
+                record("22 campos conectados", windowObject.DirectionBinding.getState().fieldCount === 22, String(windowObject.DirectionBinding.getState().fieldCount));
+
+                windowObject.DirectionBinding.init();
+                windowObject.ValidationBinding.init();
+
+                const invalidHistoryBefore = windowObject.PromptHistoryService.getSnapshot().entryCount;
+                const invalidReadiness = windowObject.ProfileValidation.getGenerationReadiness();
+                await windowObject.ValidationBinding.validate({ notify: false });
+                let invalidBlocked = false;
+                try {
+                    windowObject.PromptBinding.generate();
+                } catch (error) {
+                    invalidBlocked = error.code === "PROFILE_NOT_READY";
+                }
+                record("perfil invÃ¡lido bloqueado", !invalidReadiness.ready && invalidBlocked);
+                record("invÃ¡lido sin historial", windowObject.PromptHistoryService.getSnapshot().entryCount === invalidHistoryBefore);
+                record("Validation y Prompt comparten score invÃ¡lido", windowObject.ValidationBinding.getState().score === Number(windowObject.document.querySelector("[data-prompt-readiness-score]").textContent));
+
+                const profileA = createValidProfile(windowObject, "Perfil A");
+                windowObject.ProfileService.load(profileA);
+                windowObject.ProfileManager.saveActive();
+                await wait(100);
+
+                const lighting = windowObject.document.querySelector("[data-direction-field='lighting.type']");
+                const lens = windowObject.document.querySelector("[data-direction-field='camera.lens']");
+                lighting.value = "rembrandt";
+                lighting.dispatchEvent(new windowObject.Event("change", { bubbles: true }));
+                lens.value = "105 mm";
+                lens.dispatchEvent(new windowObject.Event("change", { bubbles: true }));
+                await wait(900);
+
+                const validReadiness = windowObject.ProfileValidation.getGenerationReadiness();
+                const validationState = await windowObject.ValidationBinding.validate({ notify: false });
+                record("dos campos Direction persistidos", windowObject.ProfileService.getActive().direction.lighting.type === "rembrandt" && windowObject.ProfileService.getActive().direction.camera.lens === "105 mm");
+                record("readiness vÃ¡lido", validReadiness.ready === true, JSON.stringify({ summary: validReadiness.summary, errors: validReadiness.errors }));
+                record("Validation y Prompt comparten score vÃ¡lido", validationState.score === Number(windowObject.document.querySelector("[data-prompt-readiness-score]").textContent));
+
+                for (const step of ["profile", "direction", "validation", "prompt", "direction", "prompt"]) {
+                    windowObject.Wizard.goTo(step, { force: true });
+                }
+                windowObject.addEventListener("prompt:generated", () => { generatedEvents += 1; });
+                const historyBefore = windowObject.PromptHistoryService.getSnapshot().entryCount;
+                windowObject.document.querySelector("[data-action='prompt-generate']").click();
+                await wait(100);
+                const historyAfter = windowObject.PromptHistoryService.getSnapshot().entryCount;
+                record("un resultado visible", windowObject.document.querySelectorAll("[data-prompt-preview]").length === 1);
+                record("un evento final", generatedEvents === 1, String(generatedEvents));
+                record("una entrada de historial", historyAfter - historyBefore === 1, `${historyBefore}->${historyAfter}`);
+
+                const idA = windowObject.ProfileService.getActive().id;
+                windowObject.ProfileManager.create({ name: "Perfil B" });
+                const profileB = createValidProfile(windowObject, "Perfil B");
+                profileB.id = windowObject.ProfileService.getActive().id;
+                profileB.direction.lighting.type = "cinematic";
+                profileB.direction.camera.lens = "50 mm";
+                windowObject.ProfileService.load(profileB);
+                windowObject.ProfileManager.saveActive();
+                await wait(100);
+                record("resultado se limpia al cambiar perfil", windowObject.PromptBinding.getLastResult() === null && !windowObject.document.querySelector("[data-prompt-preview]"));
+                windowObject.ProfileManager.select(idA);
+                await wait(100);
+                record(
+                    "direcciÃ³n aislada por perfil",
+                    windowObject.ProfileService.getActive().direction.lighting.type === "rembrandt" && windowObject.document.querySelector("[data-direction-field='camera.lens']").value === "105 mm",
+                    JSON.stringify({
+                        activeId: windowObject.ProfileService.getActive().id,
+                        expectedId: idA,
+                        lighting: windowObject.ProfileService.getActive().direction.lighting.type,
+                        activeLens: windowObject.ProfileService.getActive().direction.camera.lens,
+                        lens: windowObject.document.querySelector("[data-direction-field='camera.lens']").value
+                    })
+                );
+                record("sin excepciones de escenario", runtimeErrors.length === 0, runtimeErrors.join(" | "));
+
+                expectedProfileId = idA;
+                stage = "reload";
+                windowObject.location.reload();
+            } catch (error) {
+                results.push({ name: "runner", passed: false, detail: error.stack || error.message });
+                render(true);
+            }
+        }
+
+        createFrame();
+    </script>
+</body>
+</html>
