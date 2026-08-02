@@ -2,8 +2,8 @@
 
 /* Fachada de persistencia de evidencias; mantiene el backend actual sustituible. */
 const PhotoStorage = (() => {
-    const STRATEGY = "profile-inline-localstorage";
-    const TARGET_STRATEGY = "indexeddb-binary-v1";
+    const STRATEGY = "profile-storage-facade-v2";
+    const TARGET_STRATEGY = "indexeddb-primary-localstorage-fallback";
 
     function persistActive() {
         if (!window.ProfileManager?.saveActive) return false;
@@ -28,7 +28,8 @@ const PhotoStorage = (() => {
             strategy: STRATEGY,
             targetStrategy: TARGET_STRATEGY,
             storesBinaryInline: true,
-            migrationReady: true
+            migrationReady: true,
+            backend: window.ProfileStorage?.describe?.().backend || "uninitialized"
         });
     }
 

@@ -123,9 +123,10 @@ const ProfileManager = (() => {
 
     function readState() {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return clone(state);
-            const parsed = JSON.parse(raw);
+            const persisted = window.ProfileStorage?.loadLibrary?.();
+            const raw = persisted ? null : window.ProfileStorage?.getLegacy?.(STORAGE_KEY);
+            const parsed = persisted || (raw ? JSON.parse(raw) : null);
+            if (!parsed) return clone(state);
             if (!parsed || !Array.isArray(parsed.profiles)) return clone(state);
             return {
                 schema: SCHEMA,
@@ -140,7 +141,10 @@ const ProfileManager = (() => {
     }
 
     function persist() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if (!window.ProfileStorage?.saveLibrary) {
+            throw createError("MISSING_PROFILE_STORAGE", "ProfileStorage no está disponible.");
+        }
+        ProfileStorage.saveLibrary(state);
     }
 
     function requireProfile(profileId) {

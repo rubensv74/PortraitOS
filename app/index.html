@@ -2498,6 +2498,7 @@
     <script src="js/services/photo.reader.js"></script>
     <script src="js/services/photo.thumbnail.js"></script>
     <script src="js/services/photo.metadata.js"></script>
+    <script src="js/services/profile.storage.js"></script>
     <script src="js/services/photo.storage.js"></script>
 
     <script src="js/services/profile.photos.js"></script>
@@ -2541,6 +2542,7 @@
             "DOMContentLoaded",
             function () {
                 try {
+                    ProfileStorage.init().catch(error => console.error("PortraitOS: fallo al inicializar persistencia.", error));
                     KnowledgeBinding.init();
                     ProfileManagerBinding.init();
                     ProfileBinding.init();

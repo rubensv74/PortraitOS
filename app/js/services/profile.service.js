@@ -1043,21 +1043,10 @@ const ProfileService = (() => {
             ProfileImportExport
                 .exportProfile(profile);
 
-        if (
-            window.StorageService &&
-            typeof StorageService.set ===
-                "function"
-        ) {
-            StorageService.set(
-                key,
-                serialized
-            );
-        } else {
-            localStorage.setItem(
-                key,
-                serialized
-            );
+        if (!window.ProfileStorage?.setLegacy) {
+            throw createError("MISSING_PROFILE_STORAGE", "ProfileStorage no está disponible.");
         }
+        ProfileStorage.setLegacy(key, serialized);
 
         emit(
             "profile:saved",
@@ -1082,19 +1071,7 @@ const ProfileService = (() => {
             );
         }
 
-        let serialized = null;
-
-        if (
-            window.StorageService &&
-            typeof StorageService.get ===
-                "function"
-        ) {
-            serialized =
-                StorageService.get(key);
-        } else {
-            serialized =
-                localStorage.getItem(key);
-        }
+        const serialized = window.ProfileStorage?.getLegacy?.(key) || null;
 
         if (!serialized) {
             throw createError(
@@ -1117,15 +1094,10 @@ const ProfileService = (() => {
             );
         }
 
-        if (
-            window.StorageService &&
-            typeof StorageService.remove ===
-                "function"
-        ) {
-            StorageService.remove(key);
-        } else {
-            localStorage.removeItem(key);
+        if (!window.ProfileStorage?.removeLegacy) {
+            throw createError("MISSING_PROFILE_STORAGE", "ProfileStorage no está disponible.");
         }
+        ProfileStorage.removeLegacy(key);
 
         emit(
             "profile:storage-removed",
