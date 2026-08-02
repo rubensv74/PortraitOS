@@ -71,7 +71,7 @@ const PortraitReviewService = (() => {
 
     function read() {
         try {
-            const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+            const parsed = JSON.parse(ProfileStorage.review.load(STORAGE_KEY) || "null");
             if (parsed && parsed.reviews && typeof parsed.reviews === "object") return parsed;
         } catch (error) {
             console.warn("PortraitOS: no se pudo leer el historial de revisiones.", error);
@@ -81,7 +81,7 @@ const PortraitReviewService = (() => {
 
     function write(state) {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            ProfileStorage.review.save(STORAGE_KEY, JSON.stringify(state));
         } catch (error) {
             throw createError("STORAGE_FAILED", "No se pudo guardar la revisión. La imagen puede ser demasiado grande para el almacenamiento local.");
         }

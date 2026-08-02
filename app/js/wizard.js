@@ -897,41 +897,13 @@ const Wizard = (() => {
         const serialized =
             JSON.stringify(state);
 
-        if (
-            window.StorageService &&
-            typeof StorageService.set ===
-                "function"
-        ) {
-            StorageService.set(
-                STORAGE_KEY,
-                serialized
-            );
-        } else {
-            localStorage.setItem(
-                STORAGE_KEY,
-                serialized
-            );
-        }
+        ProfileStorage.wizard.save(STORAGE_KEY, serialized);
     }
 
     function restoreState() {
         let serialized = null;
 
-        if (
-            window.StorageService &&
-            typeof StorageService.get ===
-                "function"
-        ) {
-            serialized =
-                StorageService.get(
-                    STORAGE_KEY
-                );
-        } else {
-            serialized =
-                localStorage.getItem(
-                    STORAGE_KEY
-                );
-        }
+        serialized = ProfileStorage.wizard.load(STORAGE_KEY);
 
         if (!serialized) {
             return false;
@@ -974,19 +946,7 @@ const Wizard = (() => {
     }
 
     function removeStoredState() {
-        if (
-            window.StorageService &&
-            typeof StorageService.remove ===
-                "function"
-        ) {
-            StorageService.remove(
-                STORAGE_KEY
-            );
-        } else {
-            localStorage.removeItem(
-                STORAGE_KEY
-            );
-        }
+        ProfileStorage.wizard.remove(STORAGE_KEY);
     }
 
     /* ========================================================
