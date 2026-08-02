@@ -48,7 +48,11 @@ const ProfileService = (() => {
                 normalizeList(data.tags),
 
             identity: {
-                photos: []
+                photos: [],
+                evidenceVersion:
+                    ProfileIdentity.constants
+                        .EVIDENCE_VERSION,
+                evidence: {}
             },
 
             direction: {},
@@ -180,6 +184,7 @@ const ProfileService = (() => {
             copy.identity.locked = false;
             copy.identity.lockedAt = null;
             copy.identity.lockedBy = null;
+            copy.identity.lockedEvidenceVersion = null;
 
             if (
                 copy.identity.status ===
@@ -188,6 +193,15 @@ const ProfileService = (() => {
                 copy.identity.status =
                     "review";
             }
+        }
+
+        if (copy.identity?.evidence) {
+            Object.values(copy.identity.evidence).forEach(records => {
+                if (!Array.isArray(records)) return;
+                records.forEach(record => {
+                    record.profileId = copy.id;
+                });
+            });
         }
 
         activeProfile = copy;
@@ -590,25 +604,43 @@ const ProfileService = (() => {
 
         validate:
             function (validatedBy = "") {
-                return ProfileIdentity.validate(
+                const result = ProfileIdentity.validate(
                     getMutableActive(),
                     validatedBy
+                );
+
+                return commitIdentityChange(
+                    "identity:updated",
+                    "validate",
+                    result
                 );
             },
 
         lock:
-            function (lockedBy = "") {
-                return ProfileIdentity.lock(
+            function (options = {}) {
+                const result = ProfileIdentity.lock(
                     getMutableActive(),
-                    lockedBy
+                    options
+                );
+
+                return commitIdentityChange(
+                    "identity:locked",
+                    "lock",
+                    result
                 );
             },
 
         unlock:
             function (options = {}) {
-                return ProfileIdentity.unlock(
+                const result = ProfileIdentity.unlock(
                     getMutableActive(),
                     options
+                );
+
+                return commitIdentityChange(
+                    "identity:unlocked",
+                    "unlock",
+                    result
                 );
             },
 
@@ -627,6 +659,54 @@ const ProfileService = (() => {
                     );
             },
 
+        linkEvidence:
+            function (section, photoId, options = {}) {
+                const result = ProfileIdentity.linkEvidence(
+                    getMutableActive(),
+                    section,
+                    photoId,
+                    options
+                );
+
+                return commitIdentityChange(
+                    "identity:evidence-updated",
+                    "link-evidence",
+                    result,
+                    { section, photoId }
+                );
+            },
+
+        unlinkEvidence:
+            function (section, photoId) {
+                const result = ProfileIdentity.unlinkEvidence(
+                    getMutableActive(),
+                    section,
+                    photoId
+                );
+
+                return commitIdentityChange(
+                    "identity:evidence-updated",
+                    "unlink-evidence",
+                    result,
+                    { section, photoId }
+                );
+            },
+
+        getEvidence:
+            function (section = null) {
+                return ProfileIdentity.getEvidence(
+                    getMutableActive(),
+                    section
+                );
+            },
+
+        getEvidenceState:
+            function () {
+                return ProfileIdentity.getEvidenceState(
+                    getMutableActive()
+                );
+            },
+
         reset:
             function (options = {}) {
                 return ProfileIdentity.reset(
@@ -636,6 +716,29 @@ const ProfileService = (() => {
             }
 
     });
+
+    function commitIdentityChange(
+        eventName,
+        operation,
+        result,
+        detail = {}
+    ) {
+        if (window.ProfileManager?.saveActive) {
+            ProfileManager.saveActive();
+        }
+
+        const profile = getMutableActive();
+        emit(eventName, {
+            profileId: profile.id,
+            operation,
+            ...clone(detail),
+            identity: ProfileIdentity.get(profile),
+            evidenceState:
+                ProfileIdentity.getEvidenceState(profile)
+        });
+
+        return result;
+    }
 
     /* ========================================================
        DIRECCIÓN CREATIVA

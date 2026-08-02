@@ -400,6 +400,29 @@ const PromptBuilder = (() => {
                     source.completeness
                 ),
 
+            evidence: compactObject({
+                coverage:
+                    normalizePercentage(
+                        source.evidenceState
+                            ?.score
+                    ),
+                readyForLock:
+                    source.evidenceState
+                        ?.readyForLock === true,
+                validEvidenceCount:
+                    normalizePositiveInteger(
+                        source.evidenceState
+                            ?.validEvidenceCount
+                    ),
+                coveredSections:
+                    Object.entries(
+                        source.evidenceState
+                            ?.sections || {}
+                    )
+                        .filter(([, section]) => section?.covered === true)
+                        .map(([name]) => name)
+            }),
+
             age: compactObject({
                 apparentRange:
                     firstValue(

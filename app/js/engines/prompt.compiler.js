@@ -378,6 +378,28 @@ const PromptCompiler = (() => {
                     context.providerConfig
                         .supportsParameters,
 
+                identityEvidence: {
+                    coverage:
+                        Number(
+                            normalizedContract.subject
+                                ?.identity
+                                ?.evidence
+                                ?.coverage || 0
+                        ),
+                    verified:
+                        normalizedContract.subject
+                            ?.identity
+                            ?.evidence
+                            ?.readyForLock === true,
+                    validEvidenceCount:
+                        Number(
+                            normalizedContract.subject
+                                ?.identity
+                                ?.evidence
+                                ?.validEvidenceCount || 0
+                        )
+                },
+
                 compiledAt:
                     new Date()
                         .toISOString()

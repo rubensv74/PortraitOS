@@ -2442,6 +2442,8 @@ const ValidationBinding = (() => {
             "profile:updated",
             "photos:changed",
             "identity:field-updated",
+            "identity:updated",
+            "identity:evidence-updated",
             "identity:locked",
             "identity:unlocked",
             "direction:updated",

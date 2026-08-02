@@ -709,6 +709,9 @@
                             <span class="identity-completeness" data-identity-completeness>
                                 0 % completado
                             </span>
+                            <span class="identity-completeness" data-identity-coverage>
+                                0 % cobertura
+                            </span>
                         </div>
 
                     </div>
@@ -1019,6 +1022,57 @@
                         </article>
 
                     </div>
+
+                    <article class="card identity-evidence-workspace">
+
+                        <header class="card__header">
+                            <div>
+                                <h3>Evidencias fotográficas</h3>
+                                <p>Vincula fotografías existentes a cada agrupación de rasgos. Photos continúa siendo la biblioteca principal.</p>
+                            </div>
+                            <div class="identity-evidence-metrics" aria-label="Resumen de evidencias">
+                                <span class="status-badge"><strong data-identity-evidence-count>0</strong>&nbsp; evidencias</span>
+                                <span class="status-badge"><strong data-identity-broken-count>0</strong>&nbsp; rotas</span>
+                            </div>
+                        </header>
+
+                        <div class="card__body identity-evidence-layout">
+                            <div class="identity-evidence-toolbar">
+                                <div class="form-field">
+                                    <label for="identity-evidence-section">Sección de identidad</label>
+                                    <select id="identity-evidence-section" data-identity-evidence-section>
+                                        <option value="general">Edad aparente y contexto</option>
+                                        <option value="face" selected>Rostro general</option>
+                                        <option value="eyes">Ojos y cejas</option>
+                                        <option value="nose">Nariz</option>
+                                        <option value="mouth">Boca y labios</option>
+                                        <option value="jaw">Mandíbula y mentón</option>
+                                        <option value="skin">Tono y textura de piel</option>
+                                        <option value="hair">Cabello y canas</option>
+                                        <option value="facial-hair">Barba o bigote</option>
+                                        <option value="age-markers">Marcadores de edad</option>
+                                        <option value="asymmetries">Asimetrías</option>
+                                        <option value="distinctive-features">Rasgos distintivos</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label for="identity-evidence-note">Nota para el próximo vínculo</label>
+                                    <input id="identity-evidence-note" type="text" maxlength="160" data-identity-evidence-note placeholder="Ej. Vista frontal con luz neutra">
+                                </div>
+                            </div>
+
+                            <section aria-labelledby="identity-available-photos">
+                                <h4 id="identity-available-photos">Fotografías disponibles</h4>
+                                <div class="identity-evidence-photo-grid" data-identity-evidence-photos></div>
+                            </section>
+
+                            <section aria-labelledby="identity-linked-evidence">
+                                <h4 id="identity-linked-evidence">Evidencias vinculadas</h4>
+                                <div class="identity-evidence-list" data-identity-evidence-list aria-live="polite"></div>
+                            </section>
+                        </div>
+
+                    </article>
 
                     <article class="card">
 

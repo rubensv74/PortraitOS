@@ -115,6 +115,14 @@ const IdentityEngine = (() => {
                             .validation
                             ?.completeness || 0
                     ),
+                evidenceCoverage:
+                    Number(
+                        contract.evidence
+                            ?.coverage || 0
+                    ),
+                evidenceVerified:
+                    contract.evidence
+                        ?.verified === true,
                 valid:
                     validation.valid
             },
@@ -136,6 +144,9 @@ const IdentityEngine = (() => {
 
             sections,
             photos,
+            evidence: cloneEvidenceSummary(
+                contract.evidence
+            ),
             constraints,
             directives,
 
@@ -378,6 +389,16 @@ const IdentityEngine = (() => {
                         ?.level || ""
             })
         );
+    }
+
+    function cloneEvidenceSummary(evidence) {
+        return {
+            version: evidence?.version || "",
+            coverage: Number(evidence?.coverage || 0),
+            verified: evidence?.verified === true,
+            validEvidenceCount: Number(evidence?.validEvidenceCount || 0),
+            coveredSections: normalizeList(evidence?.coveredSections)
+        };
     }
 
     /* ========================================================

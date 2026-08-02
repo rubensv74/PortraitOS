@@ -30,6 +30,17 @@ const ProfileIdentity = (() => {
         VERIFIED: "verified"
     });
 
+    const EVIDENCE_VERSION =
+        "portraitos.identity-evidence.v1";
+
+    const EVIDENCE_INTEGRITY = Object.freeze({
+        VALID: "valid",
+        MISSING: "missing",
+        CHECKSUM_MISMATCH: "checksum_mismatch",
+        LEGACY_UNVERIFIED: "legacy_unverified",
+        WRONG_PROFILE: "wrong_profile"
+    });
+
     const IDENTITY_SECTIONS = Object.freeze({
         GENERAL: "general",
         FACE: "face",
@@ -45,11 +56,43 @@ const ProfileIdentity = (() => {
         DISTINCTIVE_FEATURES: "distinctive-features"
     });
 
+    const EVIDENCE_WEIGHTS = Object.freeze({
+        general: 4,
+        face: 15,
+        skin: 12,
+        hair: 10,
+        eyes: 12,
+        nose: 10,
+        mouth: 10,
+        jaw: 10,
+        "facial-hair": 1,
+        "age-markers": 2,
+        asymmetries: 3,
+        "distinctive-features": 11
+    });
+
+    const CRITICAL_EVIDENCE_SECTIONS = Object.freeze([
+        "face",
+        "eyes",
+        "nose",
+        "mouth",
+        "jaw",
+        "skin",
+        "hair",
+        "distinctive-features"
+    ]);
+
+    const MINIMUM_EVIDENCE_COVERAGE = 75;
+
     const DEFAULT_IDENTITY = Object.freeze({
         status: IDENTITY_STATUS.DRAFT,
         locked: false,
         lockedAt: null,
         lockedBy: null,
+        lockedEvidenceVersion: null,
+
+        evidenceVersion: EVIDENCE_VERSION,
+        evidence: createEmptyEvidenceMap(),
 
         summary: "",
         ageAppearance: "",
@@ -102,13 +145,31 @@ const ProfileIdentity = (() => {
                 ? profile.identity.photos
                 : [];
 
+        const sourceIdentity =
+            profile.identity;
+
+        const hadEvidenceContract =
+            sourceIdentity.evidenceVersion ===
+                EVIDENCE_VERSION &&
+            sourceIdentity.evidence &&
+            typeof sourceIdentity.evidence === "object";
+
         const identity =
             mergeIdentity(
                 clone(DEFAULT_IDENTITY),
-                profile.identity
+                sourceIdentity
             );
 
         identity.photos = currentPhotos;
+        identity.evidenceVersion = EVIDENCE_VERSION;
+        identity.evidenceLegacy =
+            sourceIdentity.evidenceLegacy === true ||
+            !hadEvidenceContract;
+
+        normalizeEvidence(
+            profile,
+            identity
+        );
 
         const now =
             new Date().toISOString();
@@ -340,6 +401,199 @@ const ProfileIdentity = (() => {
     }
 
     /* ========================================================
+       EVIDENCIAS DE IDENTIDAD
+       ======================================================== */
+
+    function linkEvidence(
+        profile,
+        sectionName,
+        photoId,
+        options = {}
+    ) {
+        const identity = getMutableIdentity(profile);
+        assertUnlocked(identity);
+
+        const section = normalizeSectionName(sectionName);
+        const normalizedPhotoId = normalizeText(photoId);
+        const photo = getPhoto(profile, normalizedPhotoId);
+
+        if (!photo) {
+            throw createError(
+                "IDENTITY_EVIDENCE_PHOTO_NOT_FOUND",
+                "La fotografía indicada no existe en el perfil activo."
+            );
+        }
+
+        const evidence = identity.evidence[section];
+        const existing = evidence.find(
+            item => item.photoId === normalizedPhotoId
+        );
+        const now = new Date().toISOString();
+        const record = {
+            photoId: normalizedPhotoId,
+            checksum: normalizeText(photo.checksum),
+            profileId: normalizeText(profile.id),
+            role: photo.isPrimary === true
+                ? "primary"
+                : "reference",
+            note: normalizeText(options.note).slice(0, 160),
+            createdAt: existing?.createdAt || now
+        };
+
+        if (existing) {
+            Object.assign(existing, record);
+        } else {
+            evidence.push(record);
+        }
+
+        syncLegacySourcePhotoIds(identity, section);
+        identity.evidenceLegacy = false;
+        markUpdated(profile);
+
+        return clone(record);
+    }
+
+    function unlinkEvidence(
+        profile,
+        sectionName,
+        photoId
+    ) {
+        const identity = getMutableIdentity(profile);
+        assertUnlocked(identity);
+        const section = normalizeSectionName(sectionName);
+        const normalizedPhotoId = normalizeText(photoId);
+        const index = identity.evidence[section].findIndex(
+            item => item.photoId === normalizedPhotoId
+        );
+
+        if (index < 0) {
+            throw createError(
+                "IDENTITY_EVIDENCE_NOT_FOUND",
+                "La evidencia indicada no está vinculada a esta sección."
+            );
+        }
+
+        const removed = identity.evidence[section].splice(index, 1)[0];
+        syncLegacySourcePhotoIds(identity, section);
+        markUpdated(profile);
+        return clone(removed);
+    }
+
+    function getEvidence(
+        profile,
+        sectionName = null
+    ) {
+        const identity = getIdentity(profile);
+
+        if (sectionName !== null) {
+            const section = normalizeSectionName(sectionName);
+            return clone(identity.evidence[section]);
+        }
+
+        return clone(identity.evidence);
+    }
+
+    function getEvidenceState(profile) {
+        const identity = getIdentity(profile);
+        const photos = Array.isArray(identity.photos)
+            ? identity.photos
+            : [];
+        const sections = {};
+        const missingSections = [];
+        const criticalMissingSections = [];
+        let score = 0;
+        let validEvidenceCount = 0;
+        let invalidEvidenceCount = 0;
+        let legacyEvidenceCount = 0;
+        let totalEvidenceCount = 0;
+
+        Object.keys(EVIDENCE_WEIGHTS).forEach(section => {
+            const entries = identity.evidence[section].map(record => {
+                const integrity = getEvidenceIntegrity(
+                    profile,
+                    record,
+                    photos
+                );
+
+                totalEvidenceCount += 1;
+                if (integrity === EVIDENCE_INTEGRITY.VALID) validEvidenceCount += 1;
+                else if (integrity === EVIDENCE_INTEGRITY.LEGACY_UNVERIFIED) legacyEvidenceCount += 1;
+                else invalidEvidenceCount += 1;
+
+                return { ...clone(record), integrity };
+            });
+            const covered = entries.some(
+                entry => entry.integrity === EVIDENCE_INTEGRITY.VALID
+            );
+
+            if (covered) score += EVIDENCE_WEIGHTS[section];
+            else {
+                missingSections.push(section);
+                if (CRITICAL_EVIDENCE_SECTIONS.includes(section)) {
+                    criticalMissingSections.push(section);
+                }
+            }
+
+            sections[section] = {
+                weight: EVIDENCE_WEIGHTS[section],
+                critical: CRITICAL_EVIDENCE_SECTIONS.includes(section),
+                covered,
+                evidence: entries
+            };
+        });
+
+        const criticalInvalid = CRITICAL_EVIDENCE_SECTIONS.some(
+            section => sections[section].evidence.some(
+                entry => ![
+                    EVIDENCE_INTEGRITY.VALID,
+                    EVIDENCE_INTEGRITY.LEGACY_UNVERIFIED
+                ].includes(entry.integrity)
+            )
+        );
+        const hasPrimaryPhoto = photos.some(photo => photo.isPrimary === true);
+
+        return clone({
+            score,
+            coveredSections: Object.keys(EVIDENCE_WEIGHTS).length - missingSections.length,
+            requiredSections: Object.keys(EVIDENCE_WEIGHTS).length,
+            missingSections,
+            criticalMissingSections,
+            invalidEvidenceCount,
+            legacyEvidenceCount,
+            validEvidenceCount,
+            totalEvidenceCount,
+            hasPrimaryPhoto,
+            readyForLock:
+                score >= MINIMUM_EVIDENCE_COVERAGE &&
+                criticalMissingSections.length === 0 &&
+                !criticalInvalid &&
+                hasPrimaryPhoto,
+            sections
+        });
+    }
+
+    function getEvidenceIntegrity(profile, record, photos = null) {
+        if (
+            record.profileId &&
+            record.profileId !== profile.id
+        ) return EVIDENCE_INTEGRITY.WRONG_PROFILE;
+
+        const collection = photos || profile.identity?.photos || [];
+        const photo = collection.find(item => item.id === record.photoId);
+        if (!photo) return EVIDENCE_INTEGRITY.MISSING;
+
+        const evidenceChecksum = normalizeText(record.checksum);
+        const photoChecksum = normalizeText(photo.checksum);
+        if (!evidenceChecksum || !photoChecksum) {
+            return EVIDENCE_INTEGRITY.LEGACY_UNVERIFIED;
+        }
+        if (evidenceChecksum !== photoChecksum) {
+            return EVIDENCE_INTEGRITY.CHECKSUM_MISMATCH;
+        }
+        return EVIDENCE_INTEGRITY.VALID;
+    }
+
+    /* ========================================================
        VALIDACIÓN
        ======================================================== */
 
@@ -461,9 +715,16 @@ const ProfileIdentity = (() => {
        BLOQUEO DE IDENTIDAD
        ======================================================== */
 
-    function lock(profile, lockedBy = "") {
+    function lock(profile, options = {}) {
         const identity =
             getMutableIdentity(profile);
+
+        if (options.confirm !== true) {
+            throw createError(
+                "LOCK_CONFIRMATION_REQUIRED",
+                "Se requiere confirmación explícita para bloquear la identidad."
+            );
+        }
 
         if (
             identity.status !==
@@ -475,13 +736,32 @@ const ProfileIdentity = (() => {
             );
         }
 
+        const evidenceState =
+            getEvidenceState(profile);
+
+        if (!evidenceState.hasPrimaryPhoto) {
+            throw createError(
+                "IDENTITY_PRIMARY_PHOTO_REQUIRED",
+                "Se necesita una fotografía principal para bloquear la identidad."
+            );
+        }
+
+        if (!evidenceState.readyForLock) {
+            throw createError(
+                "IDENTITY_EVIDENCE_NOT_READY",
+                "La cobertura visual o la integridad de evidencias no permite bloquear la identidad."
+            );
+        }
+
         const now =
             new Date().toISOString();
 
         identity.locked = true;
         identity.lockedAt = now;
         identity.lockedBy =
-            normalizeText(lockedBy);
+            normalizeText(options.lockedBy);
+        identity.lockedEvidenceVersion =
+            EVIDENCE_VERSION;
 
         identity.status =
             IDENTITY_STATUS.LOCKED;
@@ -516,6 +796,7 @@ const ProfileIdentity = (() => {
         identity.locked = false;
         identity.lockedAt = null;
         identity.lockedBy = null;
+        identity.lockedEvidenceVersion = null;
 
         identity.status =
             IDENTITY_STATUS.REVIEW;
@@ -582,6 +863,9 @@ const ProfileIdentity = (() => {
         const identity =
             getIdentity(profile);
 
+        const evidenceState =
+            getEvidenceState(profile);
+
         const traits =
             Object.entries(
                 identity.sections
@@ -619,6 +903,18 @@ const ProfileIdentity = (() => {
 
             traits,
 
+            evidence: {
+                version: EVIDENCE_VERSION,
+                coverage: evidenceState.score,
+                verified: evidenceState.readyForLock,
+                validEvidenceCount:
+                    evidenceState.validEvidenceCount,
+                coveredSections:
+                    Object.entries(evidenceState.sections)
+                        .filter(([, value]) => value.covered)
+                        .map(([name]) => name)
+            },
+
             constraints: [
                 "No modificar la edad aparente.",
                 "No alterar las proporciones faciales.",
@@ -642,6 +938,77 @@ const ProfileIdentity = (() => {
             notes: "",
             updatedAt: null
         };
+    }
+
+    function createEmptyEvidenceMap() {
+        return Object.values(IDENTITY_SECTIONS).reduce(
+            (result, section) => {
+                result[section] = [];
+                return result;
+            },
+            {}
+        );
+    }
+
+    function normalizeEvidence(profile, identity) {
+        const source = identity.evidence &&
+            typeof identity.evidence === "object"
+            ? identity.evidence
+            : {};
+        const normalized = createEmptyEvidenceMap();
+
+        Object.keys(normalized).forEach(section => {
+            const seen = new Set();
+            const records = Array.isArray(source[section])
+                ? source[section]
+                : [];
+
+            records.forEach(record => {
+                const photoId = normalizeText(record?.photoId);
+                if (!photoId || seen.has(photoId)) return;
+                seen.add(photoId);
+                normalized[section].push({
+                    photoId,
+                    checksum: normalizeText(record.checksum),
+                    profileId: normalizeText(record.profileId),
+                    role: record.role === "primary" ? "primary" : "reference",
+                    note: normalizeText(record.note),
+                    createdAt: normalizeText(record.createdAt) || new Date().toISOString()
+                });
+            });
+
+            const legacyIds = normalizeIds(
+                identity.sections[section]?.sourcePhotoIds
+            );
+            legacyIds.forEach(photoId => {
+                if (seen.has(photoId)) return;
+                seen.add(photoId);
+                normalized[section].push({
+                    photoId,
+                    checksum: "",
+                    profileId: normalizeText(profile.id),
+                    role: "reference",
+                    note: "",
+                    createdAt: identity.sections[section]?.updatedAt || identity.createdAt || new Date().toISOString()
+                });
+            });
+        });
+
+        identity.evidence = normalized;
+        Object.keys(normalized).forEach(
+            section => syncLegacySourcePhotoIds(identity, section)
+        );
+    }
+
+    function syncLegacySourcePhotoIds(identity, section) {
+        identity.sections[section].sourcePhotoIds =
+            identity.evidence[section].map(record => record.photoId);
+    }
+
+    function getPhoto(profile, photoId) {
+        return (profile.identity?.photos || []).find(
+            photo => photo.id === photoId
+        ) || null;
     }
 
     function mergeIdentity(
@@ -863,6 +1230,12 @@ const ProfileIdentity = (() => {
         listSections,
         getSummary,
 
+        linkEvidence,
+        unlinkEvidence,
+        getEvidence,
+        getEvidenceState,
+        getEvidenceIntegrity,
+
         recalculateValidation,
         validate,
 
@@ -875,7 +1248,12 @@ const ProfileIdentity = (() => {
         constants: Object.freeze({
             IDENTITY_STATUS,
             CONFIDENCE_LEVELS,
-            IDENTITY_SECTIONS
+            IDENTITY_SECTIONS,
+            EVIDENCE_VERSION,
+            EVIDENCE_INTEGRITY,
+            EVIDENCE_WEIGHTS,
+            CRITICAL_EVIDENCE_SECTIONS,
+            MINIMUM_EVIDENCE_COVERAGE
         })
     });
 

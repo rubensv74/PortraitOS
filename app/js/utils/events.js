@@ -59,6 +59,9 @@ const AppEvents = (() => {
         IDENTITY_UPDATED:
             "identity:updated",
 
+        IDENTITY_EVIDENCE_UPDATED:
+            "identity:evidence-updated",
+
         IDENTITY_VALIDATED:
             "identity:validated",
 
