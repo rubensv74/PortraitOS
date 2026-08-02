@@ -209,7 +209,7 @@ const IdentityBinding = (() => {
 
     function bindEvents() {
         if (!window.AppEvents?.on) return;
-        ["profile:loaded", "profile-manager:changed", "profile:imported"].forEach(name => {
+        ["profile:loaded", "profile-manager:changed", "profile:imported", "photos:changed"].forEach(name => {
             const unsubscribe = AppEvents.on(name, load);
             if (typeof unsubscribe === "function") subscriptions.push(unsubscribe);
         });

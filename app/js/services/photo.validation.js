@@ -36,20 +36,61 @@ const PhotoValidation = (() => {
 
     function validateFile(file) {
 
-        if (!(file instanceof File)) {
+        const result = checkFile(file);
+
+        if (!result.valid) {
 
             throw error(
-                "INVALID_FILE",
-                "El elemento indicado no es un archivo."
+                result.errors[0].code,
+                result.errors[0].message
             );
 
         }
 
-        validateType(file);
-
-        validateSize(file);
-
         return true;
+
+    }
+
+    function checkFile(file) {
+
+        const errors = [];
+
+        if (!(file instanceof File)) {
+
+            errors.push({
+                code: "INVALID_FILE",
+                message: "El elemento indicado no es un archivo válido."
+            });
+
+            return { valid: false, errors };
+
+        }
+
+        if (file.size <= 0) {
+            errors.push({
+                code: "EMPTY_FILE",
+                message: "El archivo está vacío."
+            });
+        }
+
+        if (!ALLOWED_TYPES.includes(file.type)) {
+            errors.push({
+                code: "INVALID_FORMAT",
+                message: "Solo se admiten JPG, PNG y WEBP."
+            });
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+            errors.push({
+                code: "FILE_TOO_LARGE",
+                message: "La fotografía supera los 10 MB."
+            });
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors
+        };
 
     }
 
@@ -87,9 +128,20 @@ const PhotoValidation = (() => {
         const dimensions =
             await getImageDimensions(file);
 
+        validateDimensions(
+            dimensions.width,
+            dimensions.height
+        );
+
+        return dimensions;
+
+    }
+
+    function validateDimensions(width, height) {
+
         if (
-            dimensions.width < MIN_WIDTH ||
-            dimensions.height < MIN_HEIGHT
+            width < MIN_WIDTH ||
+            height < MIN_HEIGHT
         ) {
 
             throw error(
@@ -99,7 +151,7 @@ const PhotoValidation = (() => {
 
         }
 
-        return dimensions;
+        return true;
 
     }
 
@@ -213,9 +265,13 @@ const PhotoValidation = (() => {
 
         validateFile,
 
+        checkFile,
+
         validateCollection,
 
         validateResolution,
+
+        validateDimensions,
 
         validateType,
 
