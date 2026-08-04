@@ -5,17 +5,18 @@
 "use strict";
 const output = document.getElementById("results");
 const results = [];
-const keepAlive = window.setInterval(() => {}, 50);
+let keepAlive = null;
 let stage = "clean";
 let expected = {};
 
 function render(final = false) {
     const passed = results.filter(item => item.passed).length;
-    output.textContent = results.map(item => `${item.passed ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`).join("\n");
+    output.textContent = results.map(item => `${item.passed ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`).join("\\n");
     if (final) {
         clearInterval(keepAlive);
+        keepAlive = null;
         output.dataset.testStatus = passed === results.length ? "passed" : "failed";
-        output.textContent += `\nSUMMARY ${passed}/${results.length}`;
+        output.textContent += `\\nSUMMARY ${passed}/${results.length}`;
     }
 }
 function record(name, condition, detail = "") {
@@ -24,8 +25,18 @@ function record(name, condition, detail = "") {
 }
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+function resetRunnerState() {
+    clearInterval(keepAlive);
+    keepAlive = null;
+    stage = "clean";
+    expected = {};
+    results.length = 0;
+    output.textContent = "RUNNING";
+}
+
 function createFrame() {
     const old = document.querySelector("iframe"); old?.remove();
+    resetRunnerState();
     const frame = document.createElement("iframe"); frame.src = "../app/index.html";
     frame.addEventListener("load", () => run(frame)); document.body.append(frame);
 }
