@@ -155,6 +155,7 @@ const PromptExportService = (() => {
             optimizedPrompt: input.optimizedPrompt || null,
             result: input.result || null,
             history: options.includeHistory === false ? [] : normalizeHistory(input.history || []),
+            reviews: options.includeReviews === false ? [] : normalizeReviews(input.reviews || []),
             metadata: {
                 ...(isPlainObject(input.metadata) ? input.metadata : {}),
                 format: FORMATS.PORTRAITOS
@@ -173,7 +174,8 @@ const PromptExportService = (() => {
             compiledPrompt: pkg.compiledPrompt,
             optimizedPrompt: pkg.optimizedPrompt,
             result: pkg.result,
-            history: pkg.history
+            history: pkg.history,
+            reviews: pkg.reviews
         });
         return fnv1aHash(payload);
     }
@@ -407,6 +409,13 @@ const PromptExportService = (() => {
         return [];
     }
 
+    function normalizeReviews(source) {
+        if (Array.isArray(source)) return clone(source);
+        if (Array.isArray(source?.entries)) return clone(source.entries);
+        if (Array.isArray(source?.reviews)) return clone(source.reviews);
+        return [];
+    }
+
     function normalizeFormat(value) {
         const normalized = normalizeText(value).toLowerCase().replace(/^\./, "");
         const aliases = { markdown: FORMATS.MARKDOWN, text: FORMATS.TXT, package: FORMATS.PORTRAITOS };
@@ -514,7 +523,8 @@ const PromptExportService = (() => {
                 compiledPrompt: pkg.compiledPrompt,
                 optimizedPrompt: pkg.optimizedPrompt,
                 result: pkg.result,
-                history: pkg.history
+                history: pkg.history,
+                reviews: pkg.reviews
             });
             if (computed !== pkg.checksum) {
                 errors.push(`Checksum inválido: se esperaba "${pkg.checksum}", se calculó "${computed}".`);
@@ -531,6 +541,7 @@ const PromptExportService = (() => {
                 hasOptimizedPrompt: Boolean(pkg.optimizedPrompt),
                 hasResult: Boolean(pkg.result),
                 historyCount: Array.isArray(pkg.history) ? pkg.history.length : 0,
+                reviewCount: Array.isArray(pkg.reviews) ? pkg.reviews.length : 0,
                 createdAt: pkg.createdAt || null
             }
         };
@@ -552,6 +563,7 @@ const PromptExportService = (() => {
             profile: null,
             contract: null,
             history: [],
+            reviews: [],
             importedAt: new Date().toISOString()
         };
 
@@ -577,6 +589,14 @@ const PromptExportService = (() => {
             if (pkg.history && Array.isArray(pkg.history) && window.PromptHistoryService) {
                 const importResult = window.PromptHistoryService.importHistory?.(pkg.history, { strategy }) || null;
                 results.history = importResult ? [importResult] : pkg.history.map(() => ({ action: "skipped" }));
+            }
+
+            if (pkg.reviews && Array.isArray(pkg.reviews) && window.PortraitReviewService) {
+                const profileId = pkg.profile?.id || options.profileId;
+                if (profileId) {
+                    const importResult = window.PortraitReviewService.importReviews?.({ entries: pkg.reviews, profileId }, { strategy, profileId }) || null;
+                    results.reviews = importResult ? [importResult] : pkg.reviews.map(() => ({ action: "skipped" }));
+                }
             }
 
             return deepFreeze(results);

@@ -512,6 +512,125 @@ const AppConstants = (() => {
             ])
     });
 
+    const REVIEW = Object.freeze({
+        VERSION:
+            "1.0",
+
+        SCHEMA:
+            "portraitos.reviews",
+
+        SCHEMA_VERSION:
+            "1.0",
+
+        STORAGE_KEY:
+            "portraitos.reviews.v2",
+
+        BACKUP_KEY:
+            "portraitos.reviews.backup",
+
+        MAX_ENTRIES_PER_PROFILE:
+            50,
+
+        STATUS:
+            Object.freeze({
+                DRAFT:
+                    "draft",
+
+                NEEDS_REVIEW:
+                    "needs_review",
+
+                APPROVED:
+                    "approved",
+
+                REJECTED:
+                    "rejected"
+            }),
+
+        VALID_TRANSITIONS: Object.freeze({
+            draft: ["needs_review", "approved", "rejected"],
+            needs_review: ["draft", "approved", "rejected"],
+            approved: ["draft"],
+            rejected: ["draft"]
+        }),
+
+        CHECKLIST_CATEGORIES:
+            Object.freeze([
+                "identity",
+                "hair",
+                "skin",
+                "proportions",
+                "distinctiveFeatures",
+                "permanentAccessories",
+                "creativeDirection",
+                "composition",
+                "technicalQuality"
+            ]),
+
+        CHECK_RESULT:
+            Object.freeze({
+                PASS:
+                    "pass",
+
+                FAIL:
+                    "fail",
+
+                NOT_APPLICABLE:
+                    "not_applicable",
+
+                NOT_REVIEWED:
+                    "not_reviewed"
+            }),
+
+        CHECK_SEVERITY:
+            Object.freeze({
+                CRITICAL:
+                    "critical",
+
+                MAJOR:
+                    "major",
+
+                MINOR:
+                    "minor",
+
+                INFORMATIONAL:
+                    "informational"
+            }),
+
+        DEFAULT_SEVERITY: Object.freeze({
+            identity: "critical",
+            hair: "major",
+            skin: "major",
+            proportions: "critical",
+            distinctiveFeatures: "critical",
+            permanentAccessories: "minor",
+            creativeDirection: "major",
+            composition: "major",
+            technicalQuality: "critical"
+        }),
+
+        SEVERITY_WEIGHTS: Object.freeze({
+            critical: 4,
+            major: 3,
+            minor: 2,
+            informational: 1
+        }),
+
+        LIMITS:
+            Object.freeze({
+                SUMMARY:
+                    2000,
+
+                DECISION_REASON:
+                    1000,
+
+                CHECK_NOTES:
+                    500,
+
+                OBSERVATION_DESCRIPTION:
+                    1000
+            })
+    });
+
     const ROUTES = Object.freeze({
         HOME:
             "home",
@@ -646,6 +765,30 @@ const AppConstants = (() => {
         VALIDATION_COMPLETED:
             "validation:completed",
 
+        REVIEW_CREATED:
+            "review:created",
+
+        REVIEW_UPDATED:
+            "review:updated",
+
+        REVIEW_STATUS_CHANGED:
+            "review:status-changed",
+
+        REVIEW_CHECKLIST_UPDATED:
+            "review:checklist-updated",
+
+        REVIEW_DELETED:
+            "review:deleted",
+
+        REVIEW_CLEARED:
+            "review:cleared",
+
+        REVIEW_IMAGE_UPLOADED:
+            "review:image-uploaded",
+
+        REVIEW_IMAGE_REMOVED:
+            "review:image-removed",
+
         PROMPT_GENERATED:
             "prompt:generated",
 
@@ -779,6 +922,7 @@ const AppConstants = (() => {
         DIRECTION,
         VALIDATION,
         PROMPT,
+        REVIEW,
         WIZARD,
         ROUTES,
         UI,

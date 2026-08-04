@@ -80,6 +80,30 @@ const AppEvents = (() => {
         VALIDATION_COMPLETED:
             "validation:completed",
 
+        REVIEW_CREATED:
+            "review:created",
+
+        REVIEW_UPDATED:
+            "review:updated",
+
+        REVIEW_STATUS_CHANGED:
+            "review:status-changed",
+
+        REVIEW_CHECKLIST_UPDATED:
+            "review:checklist-updated",
+
+        REVIEW_DELETED:
+            "review:deleted",
+
+        REVIEW_CLEARED:
+            "review:cleared",
+
+        REVIEW_IMAGE_UPLOADED:
+            "review:image-uploaded",
+
+        REVIEW_IMAGE_REMOVED:
+            "review:image-removed",
+
         PROMPT_GENERATED:
             "prompt:generated",
 

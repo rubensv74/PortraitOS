@@ -1,0 +1,224 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>PortraitOS Sprint 6 tests</title></head>
+<body><pre id="results" data-test-status="running">RUNNING</pre><script>
+"use strict";
+const out=document.getElementById("results"),results=[];
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+let step="boot";const mark=(s)=>{step=s;out.dataset.step=s;};
+function postResults(){try{const body=JSON.stringify({status:out.dataset.testStatus||"running",text:out.textContent,step:out.dataset.step||""});fetch("/results",{method:"POST",headers:{"Content-Type":"application/json"},body});}catch(e){}}
+const watchdog=setTimeout(()=>{render(true);out.textContent+=`\nHANG_STEP=${step}`;postResults();},60000);
+function render(final=false){const pass=results.filter(x=>x.pass).length;out.textContent=results.map(x=>`${x.pass?"PASS":"FAIL"} ${x.name}${x.detail?` — ${x.detail}`:""}`).join("\n");if(final){clearTimeout(watchdog);out.dataset.testStatus=pass===results.length?"passed":"failed";out.textContent+=`\nSUMMARY ${pass}/${results.length}`;postResults();}}
+function check(name,value,detail=""){results.push({name,pass:value===true,detail});render();if(!value)throw new Error(`${name}: ${detail}`);}
+function pngDataUrl(w,size=64,color="#6d4aff"){const c=w.document.createElement("canvas");c.width=size;c.height=size;const x=c.getContext("2d");x.fillStyle=color;x.fillRect(0,0,size,size);return c.toDataURL("image/png");}
+function imageFile(w){const dataUrl=pngDataUrl(w,640);const b=w.atob(dataUrl.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new w.File([a],"synthetic-s6.png",{type:"image/png"});}
+const frame=document.createElement("iframe");frame.src="../app/index.html";document.body.append(frame);
+frame.addEventListener("load",async()=>{const w=frame.contentWindow;try{if(!w.document.documentElement.hasAttribute("data-portraitos-ready"))return;await w.ProfileStorage.ready();
+  const errors=[];w.addEventListener("error",e=>errors.push(e.message));w.addEventListener("unhandledrejection",e=>errors.push(String(e.reason)));
+
+  /* ---- A. Review Contract: creación ---- */
+  mark("A.create");
+  const profile=w.ProfileService.getActive();
+  check("A perfil activo disponible",Boolean(profile));
+
+  const reviewA=w.PortraitReviewService.create(profile.id,{
+    generationId:"gen-test-1234",
+    contractId:"contract-test-5678",
+    contractHash:"abc123",
+    imageName:"test-portrait.png",
+    status:"draft",
+    checklist:{
+      identity:{result:"pass",severity:"critical",notes:"Identidad verificada"},
+      hair:{result:"pass",severity:"major",notes:""},
+      skin:{result:"pass",severity:"major",notes:""},
+      proportions:{result:"pass",severity:"critical",notes:""},
+      distinctiveFeatures:{result:"pass",severity:"critical",notes:""},
+      permanentAccessories:{result:"not_applicable",severity:"minor",notes:"Sin accesorios"},
+      creativeDirection:{result:"pass",severity:"major",notes:""},
+      composition:{result:"pass",severity:"major",notes:""},
+      technicalQuality:{result:"pass",severity:"critical",notes:""}
+    },
+    summary:"Revisión de prueba",
+    decisionReason:"Prueba de Sprint 6"
+  });
+  check("A review creada",Boolean(reviewA));
+  check("A reviewId presente",typeof reviewA.reviewId==="string"&&reviewA.reviewId.length>0);
+  check("A profileId coincide",reviewA.profileId===profile.id);
+  check("A generationId coincide",reviewA.generationId==="gen-test-1234");
+  check("A contractId coincide",reviewA.contractId==="contract-test-5678");
+  check("A contractHash coincide",reviewA.contractHash==="abc123");
+  check("A imageName coincide",reviewA.imageName==="test-portrait.png");
+  check("A status es draft",reviewA.status==="draft");
+  check("A schemaVersion es 1.0",reviewA.schemaVersion==="1.0");
+  check("A reviewVersion es 1.0",reviewA.reviewVersion==="1.0");
+  check("A checklist tiene 9 categorías",Object.keys(reviewA.checklist).length===9);
+  check("A score calculado",typeof reviewA.score==="object"&&typeof reviewA.score.total==="number");
+  check("A score total es 100 (actual="+reviewA.score.total+")",reviewA.score.total===100);
+  check("A score passed es 8",reviewA.score.passed===8);
+  check("A score notApplicable es 1",reviewA.score.notApplicable===1);
+  check("A score hasBlockingIssues es false",reviewA.score.hasBlockingIssues===false);
+  check("A createdAt presente",typeof reviewA.createdAt==="string");
+  check("A updatedAt presente",typeof reviewA.updatedAt==="string");
+
+  /* ---- B. Review Contract: validación ---- */
+  mark("B.validate");
+  check("B review tiene summary",reviewA.summary==="Revisión de prueba");
+  check("B review tiene decisionReason",reviewA.decisionReason==="Prueba de Sprint 6");
+  check("B checklist identity tiene notes",reviewA.checklist.identity.notes==="Identidad verificada");
+  check("B checklist permanentAccessories tiene notes",reviewA.checklist.permanentAccessories.notes==="Sin accesorios");
+
+  /* ---- C. Binary storage ---- */
+  mark("C.binary");
+  const file=imageFile(w);
+  const binaryId=await w.PortraitReviewService.setImage(reviewA.reviewId,file,profile.id);
+  check("C binaryId retornado",typeof binaryId==="string"&&binaryId.length>0);
+  check("C binaryId contiene profileId",binaryId.startsWith(profile.id));
+  check("C binaryId contiene review",binaryId.includes(":review:"));
+  const updatedReview=w.PortraitReviewService.getById(reviewA.reviewId,profile.id);
+  check("C review actualizado tiene imageBinaryId",Boolean(updatedReview?.imageBinaryId));
+  const resolved=await w.PortraitReviewService.resolveImage(updatedReview);
+  check("C imagen resuelta (type="+typeof resolved+", starts="+String(resolved).slice(0,10)+")",typeof resolved==="string"&&resolved.startsWith("data:"));
+
+  /* ---- D. Asociación generation/contract ---- */
+  mark("D.associate");
+  const reviewB=w.PortraitReviewService.create(profile.id,{
+    generationId:"gen-another-9999",
+    contractId:"contract-another-8888",
+    contractHash:"def456",
+    checklist:{
+      identity:{result:"pass",severity:"critical"},
+      hair:{result:"pass",severity:"major"},
+      skin:{result:"pass",severity:"major"},
+      proportions:{result:"pass",severity:"critical"},
+      distinctiveFeatures:{result:"pass",severity:"critical"},
+      permanentAccessories:{result:"not_applicable",severity:"minor"},
+      creativeDirection:{result:"pass",severity:"major"},
+      composition:{result:"pass",severity:"major"},
+      technicalQuality:{result:"pass",severity:"critical"}
+    }
+  });
+  check("D segunda review creada",Boolean(reviewB));
+  const byGeneration=w.PortraitReviewService.getByGeneration("gen-another-9999");
+  check("D getByGeneration funciona",byGeneration.length>=1);
+  const byContract=w.PortraitReviewService.getByContract("contract-another-8888");
+  check("D getByContract funciona",byContract.length>=1);
+
+  /* ---- E. Scoring ---- */
+  mark("E.scoring");
+  const scoreA=w.PortraitReviewService.calculateScore(reviewA.checklist);
+  check("E scoreA total (actual="+scoreA.total+")",scoreA.total===100);
+  const failingChecklist={
+    identity:{result:"fail",severity:"critical"},
+    hair:{result:"pass",severity:"major"},
+    skin:{result:"pass",severity:"major"},
+    proportions:{result:"fail",severity:"critical"},
+    distinctiveFeatures:{result:"pass",severity:"critical"},
+    permanentAccessories:{result:"not_applicable",severity:"minor"},
+    creativeDirection:{result:"pass",severity:"major"},
+    composition:{result:"pass",severity:"major"},
+    technicalQuality:{result:"fail",severity:"critical"}
+  };
+  const failingScore=w.PortraitReviewService.calculateScore(failingChecklist);
+  check("E failing score tiene critical failures",failingScore.criticalFailures===3);
+  check("E failing score hasBlockingIssues es true",failingScore.hasBlockingIssues===true);
+
+  /* ---- F. Status transitions ---- */
+  mark("F.transitions");
+  const reviewC=w.PortraitReviewService.create(profile.id,{
+    checklist:{
+      identity:{result:"not_reviewed",severity:"critical"},
+      hair:{result:"not_reviewed",severity:"major"},
+      skin:{result:"not_reviewed",severity:"major"},
+      proportions:{result:"not_reviewed",severity:"critical"},
+      distinctiveFeatures:{result:"not_reviewed",severity:"critical"},
+      permanentAccessories:{result:"not_reviewed",severity:"minor"},
+      creativeDirection:{result:"not_reviewed",severity:"major"},
+      composition:{result:"not_reviewed",severity:"major"},
+      technicalQuality:{result:"not_reviewed",severity:"critical"}
+    }
+  });
+  check("F reviewC status es draft",reviewC.status==="draft");
+  const updatedC=w.PortraitReviewService.update(reviewC.reviewId,{
+    status:"needs_review",
+    checklist:{
+      identity:{result:"pass",severity:"critical"},
+      hair:{result:"pass",severity:"major"},
+      skin:{result:"pass",severity:"major"},
+      proportions:{result:"pass",severity:"critical"},
+      distinctiveFeatures:{result:"pass",severity:"critical"},
+      permanentAccessories:{result:"not_applicable",severity:"minor"},
+      creativeDirection:{result:"pass",severity:"major"},
+      composition:{result:"pass",severity:"major"},
+      technicalQuality:{result:"pass",severity:"critical"}
+    }
+  });
+  check("F updatedC status es needs_review",updatedC.status==="needs_review");
+  const approvedC=w.PortraitReviewService.update(reviewC.reviewId,{status:"approved"});
+  check("F approvedC status es approved",approvedC.status==="approved");
+  check("F approvedC completedAt presente",typeof approvedC.completedAt==="string");
+
+  /* ---- G. Persistencia atómica ---- */
+  mark("G.persist");
+  const snapshot=w.PortraitReviewService.getSnapshot();
+  check("G snapshot tiene schema",snapshot.schema==="portraitos.reviews");
+  check("G snapshot tiene schemaVersion",snapshot.schemaVersion==="1.0");
+  check("G snapshot profileCount",typeof snapshot.profileCount==="number"&&snapshot.profileCount>=1);
+  check("G snapshot totalReviews",typeof snapshot.totalReviews==="number"&&snapshot.totalReviews>=3);
+
+  /* ---- H. Legacy migration ---- */
+  mark("H.legacy");
+  const legacyState={version:"1.0",reviews:{[profile.id]:[
+    {id:"legacy-1",profileId:profile.id,image:"data:image/png;base64,abc",imageName:"legacy.png",checks:{face:"approved",hair:"approved",skin:"approved",beard:"pending",features:"approved",accessories:"approved",direction:"approved",age:"approved"},status:"approved",notes:"Legacy review",createdAt:"2026-01-01T00:00:00Z",updatedAt:"2026-01-02T00:00:00Z",version:"1.0"}
+  ]}};
+  const migrated=w.PortraitReviewService.importReviews({entries:legacyState.reviews[profile.id],profileId:profile.id},{strategy:"append"});
+  check("H migración importó al menos 1",migrated.imported>=1);
+
+  /* ---- I. Export/Import ---- */
+  mark("I.export");
+  const exported=w.PortraitReviewService.exportReviews(profile.id);
+  check("I export schema",exported.schema==="portraitos.review-export");
+  check("I export profileId",exported.profileId===profile.id);
+  check("I export count",typeof exported.count==="number"&&exported.count>=1);
+  check("I export entries array",Array.isArray(exported.entries)&&exported.entries.length>=1);
+  const importResult=w.PortraitReviewService.importReviews(exported,{strategy:"merge",profileId:profile.id});
+  check("I import result",Boolean(importResult));
+  check("I import imported count",typeof importResult.imported==="number");
+
+  /* ---- J. Events ---- */
+  mark("J.events");
+  check("J REVIEW_EVENTS definido",Boolean(w.PortraitReviewService.EVENTS));
+  check("J REVIEW_EVENTS.CREATED",w.PortraitReviewService.EVENTS.CREATED==="portraitos:review:created");
+  check("J REVIEW_EVENTS.UPDATED",w.PortraitReviewService.EVENTS.UPDATED==="portraitos:review:updated");
+  check("J REVIEW_EVENTS.DELETED",w.PortraitReviewService.EVENTS.DELETED==="portraitos:review:deleted");
+
+  /* ---- K. AppConstants ---- */
+  mark("K.constants");
+  check("K AppConstants.REVIEW definido",Boolean(w.AppConstants?.REVIEW));
+  check("K AppConstants.REVIEW.VERSION",w.AppConstants?.REVIEW?.VERSION==="1.0");
+  check("K AppConstants.REVIEW.STATUS definido",Boolean(w.AppConstants?.REVIEW?.STATUS));
+  check("K AppConstants.REVIEW.STATUS.DRAFT",w.AppConstants?.REVIEW?.STATUS?.DRAFT==="draft");
+  check("K AppConstants.REVIEW.CHECKLIST_CATEGORIES length",w.AppConstants?.REVIEW?.CHECKLIST_CATEGORIES?.length===9);
+  check("K AppConstants.EVENTS.REVIEW_CREATED",w.AppConstants?.EVENTS?.REVIEW_CREATED==="review:created");
+
+  /* ---- L. PromptExportService reviews ---- */
+  mark("L.export-package");
+  const pkg=w.PromptExportService.buildPackage({profile,reviews:exported.entries});
+  check("L package tiene reviews",Array.isArray(pkg.reviews)&&pkg.reviews.length>=1);
+  const pkgValidation=w.PromptExportService.validatePackage(pkg);
+  check("L package válido",pkgValidation.valid===true);
+  check("L preview reviewCount",pkgValidation.preview.reviewCount>=1);
+
+  /* ---- M. Limpieza ---- */
+  mark("M.cleanup");
+  w.PortraitReviewService.remove(reviewB.reviewId,profile.id);
+  const afterRemove=w.PortraitReviewService.list(profile.id);
+  check("M review eliminada",!afterRemove.find(r=>r.reviewId===reviewB.reviewId));
+
+  /* ---- N. Score display ---- */
+  mark("N.score");
+  const zeroScore=w.PortraitReviewService.calculateScore({});
+  check("N zero score total es 0",zeroScore.total===0);
+  check("N zero score notReviewed es 0 (empty checklist)",zeroScore.notReviewed===0);
+
+  check("sin errores runtime",errors.length===0,errors.join(" | "));
+  render(true);
+}catch(e){results.push({name:"runner",pass:false,detail:e.stack||e.message});render(true);}});
+</script></body></html>
