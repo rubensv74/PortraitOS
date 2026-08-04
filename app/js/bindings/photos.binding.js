@@ -73,6 +73,8 @@ const PhotosBinding = (() => {
     let operationId = 0;
     let selectedPhotoId = null;
 
+    const previewCache = new Map();
+
     /* ========================================================
        INICIALIZACIÓN
        ======================================================== */
@@ -1347,18 +1349,30 @@ const PhotosBinding = (() => {
                 "Cerrar"
         });
 
+        hydrateInspection(photo);
+
         return true;
+    }
+
+    async function hydrateInspection(photo) {
+        const image = (window.UI && typeof UI.getModalRoot === "function" ? UI.getModalRoot() : document).querySelector("[data-photo-inspect-src]");
+        if (!image) return;
+        const source = await resolvePhotoSource(photo);
+        if (source) image.src = source;
     }
 
     function buildPhotoInspectionMarkup(
         photo
     ) {
         const source =
-            photo.source?.dataUrl ||
-            photo.dataUrl ||
-            photo.thumbnail?.dataUrl ||
-            photo.thumbnail ||
-            "";
+            getInlinePhotoSource(
+                photo
+            );
+
+        const pending =
+            source
+                ? ""
+                : `data-photo-inspect-src="${escapeAttribute(photo.id)}"`;
 
         const metadata =
             photo.metadata || {};
@@ -1390,6 +1404,7 @@ const PhotosBinding = (() => {
                 <img
                     class="photo-inspection__image"
                     src="${escapeAttribute(source)}"
+                    ${pending}
                     alt="${escapeHtml(photo.name || photo.filename || "Fotografía")}"
                 >
 
@@ -1472,6 +1487,107 @@ const PhotosBinding = (() => {
                         )
                 )
                 .join("");
+
+        hydratePreviews();
+    }
+
+    async function resolvePhotoSource(photo) {
+        const holders =
+            photo?.thumbnail ||
+            photo?.source ||
+            null;
+
+        const binaryId =
+            holders &&
+            typeof holders === "object"
+                ? holders.binaryId
+                : "";
+
+        return resolveBinaryDataUrl(binaryId);
+    }
+
+    async function resolveBinaryDataUrl(binaryId) {
+        if (!binaryId) return "";
+
+        if (
+            previewCache.has(
+                binaryId
+            )
+        ) {
+            return previewCache.get(
+                binaryId
+            );
+        }
+
+        try {
+            const binary =
+                await window.ProfileStorage?.binary?.get(
+                    binaryId
+                );
+
+            const blob =
+                binary?.blob || null;
+
+            const source =
+                blob
+                    ? await blobToDataUrl(
+                        blob
+                    )
+                    : "";
+
+            if (source) {
+                previewCache.set(
+                    binaryId,
+                    source
+                );
+            }
+
+            return source;
+        } catch {
+            return "";
+        }
+    }
+
+    async function hydratePreviews() {
+        if (!gallery) return;
+
+        const images =
+            Array.from(
+                gallery.querySelectorAll(
+                    "[data-photo-preview-src]"
+                )
+            );
+
+        for (const image of images) {
+            const photoId =
+                image.dataset.photoPreviewSrc;
+
+            const photo =
+                getPhotos().find(
+                    item =>
+                        item.id ===
+                        photoId
+                );
+
+            const source =
+                photo
+                    ? await resolvePhotoSource(
+                        photo
+                    )
+                    : "";
+
+            if (source) {
+                image.src = source;
+            }
+        }
+    }
+
+    function getInlinePhotoSource(photo) {
+        if (photo?.thumbnail && typeof photo.thumbnail === "string") return photo.thumbnail;
+        if (typeof photo?.thumbnail?.dataUrl === "string") return photo.thumbnail.dataUrl;
+        if (typeof photo?.source?.dataUrl === "string") return photo.source.dataUrl;
+        if (typeof photo?.dataUrl === "string") return photo.dataUrl;
+        return "";
     }
 
     function buildPhotoCard(
@@ -1486,11 +1602,14 @@ const PhotosBinding = (() => {
             selectedPhotoId === photo.id;
 
         const source =
-            photo.thumbnail?.dataUrl ||
-            photo.thumbnail ||
-            photo.source?.dataUrl ||
-            photo.dataUrl ||
-            "";
+            getInlinePhotoSource(
+                photo
+            );
+
+        const pendingSource =
+            source
+                ? ""
+                : ` data-photo-preview-src="${escapeAttribute(photo.id)}"`;
 
         const name =
             photo.name ||
@@ -1515,6 +1634,7 @@ const PhotosBinding = (() => {
 
                     <img
                         src="${escapeAttribute(source)}"
+                        ${pendingSource}
                         alt="${escapeHtml(name)}"
                         loading="lazy"
                     >
@@ -2080,6 +2200,31 @@ const PhotosBinding = (() => {
 
                 reader.readAsDataURL(
                     file
+                );
+            }
+        );
+    }
+
+    function blobToDataUrl(blob) {
+        return new Promise(
+            (resolve, reject) => {
+                const reader =
+                    new FileReader();
+
+                reader.onload =
+                    () =>
+                        resolve(
+                            reader.result
+                        );
+
+                reader.onerror =
+                    () =>
+                        reject(
+                            reader.error
+                        );
+
+                reader.readAsDataURL(
+                    blob
                 );
             }
         );
