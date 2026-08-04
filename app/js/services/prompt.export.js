@@ -160,7 +160,31 @@ const PromptExportService = (() => {
                 format: FORMATS.PORTRAITOS
             }
         };
+        packageContent.checksum = computePackageChecksum(packageContent);
         return deepFreeze(packageContent);
+    }
+
+    function computePackageChecksum(pkg) {
+        const payload = JSON.stringify({
+            schema: pkg.schema,
+            version: pkg.version,
+            profile: pkg.profile,
+            contract: pkg.contract,
+            compiledPrompt: pkg.compiledPrompt,
+            optimizedPrompt: pkg.optimizedPrompt,
+            result: pkg.result,
+            history: pkg.history
+        });
+        return fnv1aHash(payload);
+    }
+
+    function fnv1aHash(str) {
+        let hash = 2166136261;
+        for (let i = 0; i < str.length; i += 1) {
+            hash ^= str.charCodeAt(i);
+            hash = (hash * 16777619) >>> 0;
+        }
+        return hash.toString(16).padStart(8, "0");
     }
 
     function detectExportType(source) {
@@ -454,6 +478,117 @@ const PromptExportService = (() => {
         return value;
     }
 
+    /* ========================================================
+       IMPORTACIÓN DE PAQUETES
+       ======================================================== */
+
+    function validatePackage(pkg) {
+        const errors = [];
+
+        if (!isPlainObject(pkg)) {
+            return { valid: false, errors: ["El paquete no es un objeto válido."] };
+        }
+
+        if (pkg.schema !== PACKAGE_SCHEMA) {
+            errors.push(`Schema inválido: se esperaba "${PACKAGE_SCHEMA}", se recibió "${pkg.schema || "ninguno"}".`);
+        }
+
+        if (pkg.version !== PACKAGE_VERSION) {
+            errors.push(`Versión incompatible: se esperaba "${PACKAGE_VERSION}", se recibió "${pkg.version || "ninguno"}".`);
+        }
+
+        if (pkg.application !== "PortraitOS") {
+            errors.push(`Aplicación inválida: se esperaba "PortraitOS", se recibió "${pkg.application || "ninguno"}".`);
+        }
+
+        if (!pkg.profile && !pkg.contract && !pkg.compiledPrompt && !pkg.optimizedPrompt && !pkg.result) {
+            errors.push("El paquete no contiene ningún contenido exportable.");
+        }
+
+        if (pkg.checksum) {
+            const computed = computePackageChecksum({
+                schema: pkg.schema,
+                version: pkg.version,
+                profile: pkg.profile,
+                contract: pkg.contract,
+                compiledPrompt: pkg.compiledPrompt,
+                optimizedPrompt: pkg.optimizedPrompt,
+                result: pkg.result,
+                history: pkg.history
+            });
+            if (computed !== pkg.checksum) {
+                errors.push(`Checksum inválido: se esperaba "${pkg.checksum}", se calculó "${computed}".`);
+            }
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors,
+            preview: {
+                profileName: pkg.profile?.name || pkg.profile?.profileName || null,
+                hasContract: Boolean(pkg.contract),
+                hasCompiledPrompt: Boolean(pkg.compiledPrompt),
+                hasOptimizedPrompt: Boolean(pkg.optimizedPrompt),
+                hasResult: Boolean(pkg.result),
+                historyCount: Array.isArray(pkg.history) ? pkg.history.length : 0,
+                createdAt: pkg.createdAt || null
+            }
+        };
+    }
+
+    async function importPackage(pkg, options = {}) {
+        const validation = validatePackage(pkg);
+
+        if (!validation.valid) {
+            throw createExportError(
+                "PACKAGE_VALIDATION_FAILED",
+                `El paquete no es válido: ${validation.errors.join("; ")}`,
+                { errors: validation.errors, preview: validation.preview }
+            );
+        }
+
+        const strategy = options.strategy || "merge";
+        const results = {
+            profile: null,
+            contract: null,
+            history: [],
+            importedAt: new Date().toISOString()
+        };
+
+        try {
+            if (pkg.profile && window.ProfileService) {
+                if (strategy === "replace") {
+                    const active = window.ProfileService.getActive?.();
+                    if (active && active.id) {
+                        Object.keys(active).forEach(key => {
+                            if (key !== "id" && key !== "version") {
+                                delete active[key];
+                            }
+                        });
+                        Object.assign(active, pkg.profile);
+                        window.ProfileService.save?.();
+                        results.profile = { action: "replaced", profileId: active.id };
+                    }
+                } else {
+                    results.profile = { action: "merged", profileId: pkg.profile.id || null };
+                }
+            }
+
+            if (pkg.history && Array.isArray(pkg.history) && window.PromptHistoryService) {
+                const importResult = window.PromptHistoryService.importHistory?.(pkg.history, { strategy }) || null;
+                results.history = importResult ? [importResult] : pkg.history.map(() => ({ action: "skipped" }));
+            }
+
+            return deepFreeze(results);
+        } catch (error) {
+            throw createExportError(
+                "PACKAGE_IMPORT_FAILED",
+                `Error durante la importación: ${error.message}`,
+                { cause: error, partialResults: results }
+            );
+        }
+    }
+
     return Object.freeze({
         VERSION,
         PACKAGE_SCHEMA,
@@ -472,7 +607,9 @@ const PromptExportService = (() => {
         buildPackage,
         detectExportType,
         downloadContent,
-        copyText
+        copyText,
+        validatePackage,
+        importPackage
     });
 
 })();

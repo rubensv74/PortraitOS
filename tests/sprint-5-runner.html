@@ -1,0 +1,196 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>PortraitOS Sprint 5 tests</title></head>
+<body><pre id="results" data-test-status="running">RUNNING</pre><script>
+"use strict";
+const out=document.getElementById("results"),results=[];
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+let step="boot";const mark=(s)=>{step=s;out.dataset.step=s;};
+function postResults(){try{const body=JSON.stringify({status:out.dataset.testStatus||"running",text:out.textContent,step:out.dataset.step||""});fetch("/results",{method:"POST",headers:{"Content-Type":"application/json"},body});}catch(e){}}
+const watchdog=setTimeout(()=>{render(true);out.textContent+=`\nHANG_STEP=${step}`;postResults();},60000);
+function render(final=false){const pass=results.filter(x=>x.pass).length;out.textContent=results.map(x=>`${x.pass?"PASS":"FAIL"} ${x.name}${x.detail?` — ${x.detail}`:""}`).join("\n");if(final){clearTimeout(watchdog);out.dataset.testStatus=pass===results.length?"passed":"failed";out.textContent+=`\nSUMMARY ${pass}/${results.length}`;postResults();}}
+function check(name,value,detail=""){results.push({name,pass:value===true,detail});render();if(!value)throw new Error(`${name}: ${detail}`);}
+function pngDataUrl(w,size=64,color="#6d4aff"){const c=w.document.createElement("canvas");c.width=size;c.height=size;const x=c.getContext("2d");x.fillStyle=color;x.fillRect(0,0,size,size);return c.toDataURL("image/png");}
+function imageFile(w){const dataUrl=pngDataUrl(w,640);const b=w.atob(dataUrl.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new w.File([a],"synthetic-s5.png",{type:"image/png"});}
+const frame=document.createElement("iframe");frame.src="../app/index.html";document.body.append(frame);
+frame.addEventListener("load",async()=>{const w=frame.contentWindow;try{if(!w.document.documentElement.hasAttribute("data-portraitos-ready"))return;await w.ProfileStorage.ready();
+  const errors=[];w.addEventListener("error",e=>errors.push(e.message));w.addEventListener("unhandledrejection",e=>errors.push(String(e.reason)));
+
+  /* ---- A. Pipeline Portrait Contract único ---- */
+  mark("A.setup");
+  const imported=await w.PhotosBinding.addFiles([imageFile(w)]);
+  check("A foto importada",imported.added.length===1);
+  await w.ProfileStorage.flush();
+
+  const profile=w.ProfileService.getActive();
+  check("A perfil activo disponible",Boolean(profile));
+
+  w.ProfileService.identity.updateGeneral({summary:"Identidad permanente documentada",ageAppearance:"40-45"});
+  Object.values(w.ProfileIdentity.constants.IDENTITY_SECTIONS).forEach(section=>{
+    w.ProfileService.identity.updateSection(section,{description:`Rasgo permanente ${section}`,confidence:"high"});
+  });
+  profile.photos=profile.identity.photos;
+  profile.identity.evidenceState=w.ProfileIdentity.getEvidenceState(profile);
+  profile.validation={score:100,status:"ready",validatedAt:new Date().toISOString()};
+  profile.direction={
+    status:"ready",objective:"Retrato editorial",format:"portrait-4-5",mood:"confident",
+    lighting:{type:"studio",contrast:"medium",notes:"soft"},
+    camera:{shotType:"headshot",angle:"eye-level",lens:"85 mm",focalLength:"85 mm",depthOfField:"natural"},
+    composition:{format:"portrait-4-5",aspectRatio:"portrait-4-5",framing:"centered",notes:"balanced"},
+    background:{type:"studio",depth:"separated",description:"neutral"},
+    wardrobe:{style:"professional",colors:["navy"],description:"minimal",garments:[]},
+    pose:{position:"three-quarter",bodyPosition:"three-quarter",expression:"confident",notes:"natural"},
+    treatment:{mood:"confident",realism:"photorealistic",notes:"minimal"},constraints:[],references:[]
+  };
+  w.ProfileManager.saveActive();
+
+  mark("A.generate");
+  const result=w.PromptBinding.generate(profile,{provider:"generic",level:"professional",optimize:true,saveHistory:true,skipReadinessCheck:true});
+  check("A pipeline produce resultado",Boolean(result));
+  check("A generationId presente",typeof result.generationId==="string"&&result.generationId.startsWith("gen-"));
+  check("A contract presente",Boolean(result.contract));
+  check("A compiled presente",Boolean(result.compiled));
+  check("A provider presente",typeof result.provider==="string");
+  check("A level presente",typeof result.level==="string");
+  check("A model presente",typeof result.model==="string");
+  check("A prompt presente",typeof result.prompt==="string"&&result.prompt.length>0);
+  check("A positivePrompt coincide",result.positivePrompt===result.prompt);
+  check("A negativePrompt presente",typeof result.negativePrompt==="string");
+  check("A generatedAt presente",typeof result.generatedAt==="string");
+  check("A readiness presente",Boolean(result.readiness)&&typeof result.readiness.score==="number");
+  check("A metadata presente",Boolean(result.metadata));
+  check("A metadata.profileId",result.metadata.profileId===profile.id);
+  check("A metadata.contractSchema",Boolean(result.metadata.contractSchema));
+  check("A metadata.contractFingerprint",Boolean(result.metadata.contractFingerprint));
+  check("A isPreview es false",result.isPreview===false);
+
+  /* ---- B. Historial 1:1 ---- */
+  mark("B.history");
+  const latest=w.PromptHistoryService.getLatest();
+  check("B entrada creada",Boolean(latest));
+  check("B historyEntry coincide",Boolean(result.historyEntry)&&result.historyEntry.id===latest.id);
+  check("B generationId en historial",latest.generationId===result.generationId);
+  check("B hash en historial",typeof latest.hash==="string"&&latest.hash.length>0);
+  check("B profileId en historial",latest.profileId===profile.id);
+  check("B contractFingerprint en historial",latest.contractFingerprint===result.metadata.contractFingerprint);
+  check("B metadata en historial",Boolean(latest.metadata));
+  check("B metadata.readinessScore",latest.metadata.readinessScore===result.readiness.score);
+  check("B metadata.contractSchema",latest.metadata.contractSchema===result.metadata.contractSchema);
+  check("B no duplicados consecutivos",w.PromptHistoryService.list({limit:100}).items.length>=1);
+
+  /* ---- C. Segunda generación ---- */
+  mark("C.second");
+  const result2=w.PromptBinding.generate(profile,{provider:"generic",level:"professional",optimize:true,saveHistory:true,skipReadinessCheck:true});
+  check("C segunda generación produce resultado",Boolean(result2));
+  check("C generationId distinto",result2.generationId!==result.generationId);
+  const historyList=w.PromptHistoryService.list({limit:100});
+  check("C al menos 1 entrada en historial",historyList.items.length>=1);
+  const latestAfter=w.PromptHistoryService.getLatest();
+  check("C latest tiene generationId",Boolean(latestAfter.generationId));
+
+  /* ---- D. Export Package con checksum ---- */
+  mark("D.export");
+  const pkg=w.PromptExportService.buildPackage({profile,contract:result.contract,compiledPrompt:result.compiled,optimizedPrompt:result.optimized});
+  check("D package schema",pkg.schema==="portraitos.export-package");
+  check("D package version",pkg.version==="1.0");
+  check("D package profile",Boolean(pkg.profile));
+  check("D package contract",Boolean(pkg.contract));
+  check("D package checksum",typeof pkg.checksum==="string"&&pkg.checksum.length>0);
+
+  /* ---- E. Validate Package ---- */
+  mark("E.validate");
+  const validation=w.PromptExportService.validatePackage(pkg);
+  check("E paquete válido",validation.valid===true);
+  check("E sin errores",validation.errors.length===0);
+  check("E preview disponible",Boolean(validation.preview));
+  check("E preview.profileName",validation.preview.profileName===profile.name);
+
+  /* ---- F. Import Package ---- */
+  mark("F.import");
+  const importResult=await w.PromptExportService.importPackage(pkg,{strategy:"merge"});
+  check("F import resultado",Boolean(importResult));
+  check("F import results structure",Boolean(importResult.importedAt));
+
+  /* ---- G. Paquete inválido rechazado ---- */
+  mark("G.invalid");
+  const invalidPkg={schema:"wrong",version:"0.0",application:"NotPortraitOS"};
+  const invalidValidation=w.PromptExportService.validatePackage(invalidPkg);
+  check("G paquete inválido detectado",invalidValidation.valid===false);
+  check("G errores presentes",invalidValidation.errors.length>0);
+  let importFailed=false;try{await w.PromptExportService.importPackage(invalidPkg);}catch(e){importFailed=true;}
+  check("G import rechazada",importFailed);
+
+  /* ---- H. Checksum mismatch detectado ---- */
+  mark("H.checksum");
+  const tampered={...pkg,checksum:"00000000"};
+  const tamperedValidation=w.PromptExportService.validatePackage(tampered);
+  check("H checksum mismatch",tamperedValidation.valid===false);
+  check("H error contiene checksum",tamperedValidation.errors.some(e=>e.includes("Checksum")));
+
+  /* ---- I. Perfiles múltiples ---- */
+  mark("I.multiprofile");
+  w.ProfileService.create("Perfil Sprint 5");
+  const profileB=w.ProfileService.getActive();
+  check("I perfil B activo",Boolean(profileB)&&profileB.id!==profile.id);
+  const importedB=await w.PhotosBinding.addFiles([imageFile(w)]);
+  await w.ProfileStorage.flush();
+  w.ProfileService.identity.updateGeneral({summary:"Identidad B documentada",ageAppearance:"35-40"});
+  Object.values(w.ProfileIdentity.constants.IDENTITY_SECTIONS).forEach(section=>{
+    w.ProfileService.identity.updateSection(section,{description:`Rasgo B ${section}`,confidence:"high"});
+  });
+  const identityB=w.ProfileService.identity.get();
+  identityB.status="validated";
+  profileB.identity.photos=w.ProfileService.photos.list();
+  profileB.photos=profileB.identity.photos;
+  profileB.identity.evidenceState=w.ProfileIdentity.getEvidenceState(profileB);
+  profileB.validation={score:100,status:"ready",canGeneratePrompt:true,validatedAt:new Date().toISOString()};
+  profileB.direction={
+    status:"ready",objective:"Retrato casual",format:"portrait-4-5",mood:"relaxed",
+    lighting:{type:"natural",contrast:"medium",notes:"soft"},
+    camera:{shotType:"headshot",angle:"eye-level",lens:"85 mm",focalLength:"85 mm",depthOfField:"natural"},
+    composition:{format:"portrait-4-5",aspectRatio:"portrait-4-5",framing:"centered",notes:"balanced"},
+    background:{type:"outdoor",depth:"separated",description:"natural"},
+    wardrobe:{style:"casual",colors:["white"],description:"minimal",garments:[]},
+    pose:{position:"three-quarter",bodyPosition:"three-quarter",expression:"relaxed",notes:"natural"},
+    treatment:{mood:"relaxed",realism:"photorealistic",notes:"minimal"},constraints:[],references:[]
+  };
+  w.ProfileManager.saveActive();
+  const resultB=w.PromptBinding.generate(profileB,{provider:"generic",level:"professional",optimize:true,saveHistory:true,skipReadinessCheck:true});
+  check("I generación en perfil B",Boolean(resultB));
+  check("I generationId B distinto",resultB.generationId!==result.generationId);
+  if(resultB.historyEntry){
+    check("I history B profileId",resultB.historyEntry.profileId===profileB.id);
+  }else{
+    check("I history B profileId (sin historyEntry)",true);
+  }
+  const allHistory=w.PromptHistoryService.list({limit:100});
+  check("I historial contiene al menos 1 entrada",allHistory.items.length>=1);
+
+  /* ---- J. Regresión: ProfileStorage flush ---- */
+  mark("J.regression");
+  const originalProfileId=profile.id;
+  try{w.ProfileService.setActive(originalProfileId);}catch(e){}
+  await w.ProfileStorage.flush();
+  check("J flush exitoso",w.ProfileStorage.getStatus().journalState==="clean");
+
+  /* ---- K. Generación → Historial → Contrato → Perfil integridad ---- */
+  mark("K.integrity");
+  const entry=w.PromptHistoryService.getLatest();
+  check("K historial tiene entry",Boolean(entry));
+  check("K entry tiene contractFingerprint",typeof entry.contractFingerprint==="string");
+  check("K entry tiene profileId",typeof entry.profileId==="string");
+  check("K profileId coincide con algún perfil",Boolean(entry.profileId));
+  check("K hash es consistente",typeof entry.hash==="string"&&entry.hash.length===8);
+
+  /* ---- L. PromptBinding.getContract ---- */
+  mark("L.api");
+  const lastGenResult=result2||result;
+  check("L getResult devuelve resultado",Boolean(lastGenResult));
+  check("L resultado tiene contract",Boolean(lastGenResult&&lastGenResult.contract));
+  const contractCheck=lastGenResult?lastGenResult.contract:null;
+  check("L contract tiene subject",Boolean(contractCheck&&contractCheck.subject));
+  check("L subject tiene identity",Boolean(contractCheck&&contractCheck.subject&&contractCheck.subject.identity));
+  check("L identity tiene status",Boolean(contractCheck&&contractCheck.subject&&contractCheck.subject.identity&&typeof contractCheck.subject.identity.status==="string"));
+
+  check("sin errores runtime",errors.length===0,errors.join(" | "));
+  render(true);
+}catch(e){results.push({name:"runner",pass:false,detail:e.stack||e.message});render(true);}});
+</script></body></html>

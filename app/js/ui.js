@@ -103,6 +103,8 @@ const UI = (() => {
 
     let activePromptPreviewStage = "optimized";
 
+    let generationState = "empty";
+
     /* ========================================================
        INICIALIZACIÓN
        ======================================================== */
@@ -411,7 +413,14 @@ const UI = (() => {
     }
 
     async function handleGenerate() {
+        if (generationState === "generating") {
+            return;
+        }
+
         try {
+            generationState = "generating";
+            updateGenerationButton();
+
             setBusy(
                 true,
                 "Generando contrato..."
@@ -432,6 +441,9 @@ const UI = (() => {
                     }
                 );
 
+            generationState = "generated";
+            updateGenerationButton();
+
             notify(
                 "Contrato de retrato generado.",
                 {
@@ -442,6 +454,9 @@ const UI = (() => {
 
             renderPromptResult(result);
         } catch (error) {
+            generationState = "error";
+            updateGenerationButton();
+
             handleError(
                 error,
                 {
@@ -451,6 +466,24 @@ const UI = (() => {
             );
         } finally {
             setBusy(false);
+        }
+    }
+
+    function updateGenerationButton() {
+        if (!elements.generateButton) {
+            return;
+        }
+
+        const isGenerating = generationState === "generating";
+        elements.generateButton.disabled = isGenerating;
+        elements.generateButton.setAttribute("aria-disabled", String(isGenerating));
+
+        if (isGenerating) {
+            elements.generateButton.textContent = "Generando...";
+        } else if (generationState === "generated") {
+            elements.generateButton.textContent = "Regenerar contrato";
+        } else {
+            elements.generateButton.textContent = "Generar contrato";
         }
     }
 
@@ -612,6 +645,8 @@ const UI = (() => {
             AppEvents.on(
                 "profile:loaded",
                 detail => {
+                    generationState = "empty";
+                    updateGenerationButton();
                     render(detail);
                     clearPromptResult();
                 }

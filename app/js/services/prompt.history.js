@@ -268,6 +268,18 @@ const PromptHistoryService = (() => {
                         .builderVersion
             },
 
+            generationId:
+                normalized.generationId ||
+                null,
+
+            generatedAt:
+                normalized.generatedAt ||
+                now,
+
+            hash:
+                normalized.hash ||
+                null,
+
             metrics:
                 normalizeMetrics(
                     normalized.metrics,
@@ -354,6 +366,15 @@ const PromptHistoryService = (() => {
                 notes:
                     context.notes,
 
+                generationId:
+                    context.generationId,
+
+                generatedAt:
+                    context.generatedAt,
+
+                hash:
+                    context.hash,
+
                 metadata:
                     context.metadata
             }
@@ -389,6 +410,15 @@ const PromptHistoryService = (() => {
 
                 notes:
                     context.notes,
+
+                generationId:
+                    context.generationId,
+
+                generatedAt:
+                    context.generatedAt,
+
+                hash:
+                    context.hash,
 
                 metadata:
                     {
@@ -2017,8 +2047,10 @@ const PromptHistoryService = (() => {
 
             contractFingerprint:
                 normalizeNullableText(
-                    source
-                        .contractFingerprint
+                    firstValue(
+                        source.contractFingerprint,
+                        context.contractFingerprint
+                    )
                 ),
 
             provider:
@@ -2082,8 +2114,34 @@ const PromptHistoryService = (() => {
 
             builderVersion:
                 normalizeNullableText(
-                    source
-                        .builderVersion
+                    firstValue(
+                        source.builderVersion,
+                        context.builderVersion
+                    )
+                ),
+
+            generationId:
+                normalizeNullableText(
+                    firstValue(
+                        source.generationId,
+                        context.generationId
+                    )
+                ),
+
+            generatedAt:
+                normalizeNullableText(
+                    firstValue(
+                        source.generatedAt,
+                        context.generatedAt
+                    )
+                ),
+
+            hash:
+                normalizeNullableText(
+                    firstValue(
+                        source.hash,
+                        context.hash
+                    )
                 ),
 
             metrics:

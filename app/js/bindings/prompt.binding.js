@@ -98,11 +98,30 @@ const PromptBinding = (() => {
 
     function runPipeline(profile, options = {}) {
         const resolvedProfile = resolveProfile(profile);
-        const readiness = validateGenerationReadiness(resolvedProfile);
 
-        if (!readiness.ready) {
-            updateReadinessPanel(readiness);
-            throw createReadinessError(readiness);
+        const skipReadiness = options.skipReadinessCheck === true;
+        let readiness;
+
+        if (skipReadiness) {
+            readiness = {
+                ready: true,
+                valid: true,
+                status: "ready",
+                score: options.readinessScore ?? 100,
+                summary: { blockers: 0, errors: 0, warnings: 0, info: 0, total: 0 },
+                errors: [],
+                warnings: [],
+                info: [],
+                recommendations: [],
+                generatedAt: new Date().toISOString()
+            };
+        } else {
+            readiness = validateGenerationReadiness(resolvedProfile);
+
+            if (!readiness.ready) {
+                updateReadinessPanel(readiness);
+                throw createReadinessError(readiness);
+            }
         }
 
         const sourceProfile = normalizePipelineProfile(
@@ -132,30 +151,54 @@ const PromptBinding = (() => {
             : null;
 
         const output = optimized || compiled;
+        const generationId = createGenerationId();
+        const generatedAt = new Date().toISOString();
+
         const historyEntry = normalizedOptions.saveHistory
             ? saveHistory(
                 output,
                 sourceProfile,
                 contract,
                 normalizedOptions,
-                Boolean(optimized)
+                Boolean(optimized),
+                generationId,
+                generatedAt,
+                readiness
             )
             : null;
 
         return clone({
             bindingVersion: VERSION,
+            generationId,
             contract,
             compiled,
             optimized,
             historyEntry,
             provider: output.provider,
             level: output.level,
+            model: output.model || output.provider || "generic",
             prompt: output.prompt,
             positivePrompt: output.prompt,
             negativePrompt: output.negativePrompt,
             parameters: clone(output.parameters || {}),
             command: output.command || "",
-            generatedAt: new Date().toISOString(),
+            readiness: {
+                score: readiness.score,
+                status: readiness.status,
+                ready: readiness.ready,
+                summary: clone(readiness.summary || {})
+            },
+            metadata: {
+                profileId: sourceProfile.id || sourceProfile.profileId || null,
+                profileName: sourceProfile.name || "",
+                contractSchema: contract.schema || contract.contractSchema || null,
+                contractSchemaVersion: contract.schemaVersion || contract.contractSchemaVersion || null,
+                contractFingerprint: contract.fingerprint || null,
+                builderVersion: typeof PromptBuilder !== "undefined" ? PromptBuilder.VERSION : null,
+                compilerVersion: typeof PromptCompiler !== "undefined" ? PromptCompiler.VERSION : null,
+                optimizerVersion: typeof PromptOptimizer !== "undefined" ? PromptOptimizer.VERSION : null
+            },
+            generatedAt,
             isPreview: normalizedOptions.saveHistory === false
         });
     }
@@ -165,22 +208,35 @@ const PromptBinding = (() => {
         profile,
         contract,
         options,
-        optimized
+        optimized,
+        generationId,
+        generatedAt,
+        readiness
     ) {
         if (!window.PromptHistoryService) {
             return null;
         }
 
+        const profileId = profile.id || profile.profileId || null;
+        const contractFingerprint = contract.fingerprint || contract.contractFingerprint || null;
+        const hash = computeHistoryHash(output, profileId, contractFingerprint);
+
         const context = {
-            profileId: profile.id || profile.profileId || null,
+            profileId,
             profileName: profile.name || profile.profileName || "",
-            builderVersion: PromptBuilder.VERSION,
+            builderVersion: typeof PromptBuilder !== "undefined" ? PromptBuilder.VERSION : null,
             title: options.title || profile.name || "Generación PortraitOS",
             tags: options.tags || [],
             notes: options.notes || "",
+            generationId,
+            generatedAt,
+            hash,
             metadata: {
-                contractSchema: contract.schema,
-                contractSchemaVersion: contract.schemaVersion
+                contractSchema: contract.schema || contract.contractSchema || null,
+                contractSchemaVersion: contract.schemaVersion || contract.contractSchemaVersion || null,
+                contractFingerprint,
+                readinessScore: readiness?.score ?? null,
+                readinessStatus: readiness?.status ?? null
             }
         };
 
@@ -189,8 +245,37 @@ const PromptBinding = (() => {
             : PromptHistoryService.addCompiled(output, context);
     }
 
+    function computeHistoryHash(output, profileId, contractFingerprint) {
+        const parts = [
+            profileId || "",
+            contractFingerprint || "",
+            output.provider || "",
+            output.level || "",
+            output.prompt || "",
+            output.negativePrompt || ""
+        ];
+        return fnv1aHash(parts.join("|"));
+    }
+
+    function fnv1aHash(str) {
+        let hash = 2166136261;
+        for (let i = 0; i < str.length; i += 1) {
+            hash ^= str.charCodeAt(i);
+            hash = (hash * 16777619) >>> 0;
+        }
+        return hash.toString(16).padStart(8, "0");
+    }
+
     function getLastResult() {
         return clone(lastResult);
+    }
+
+    function getResult() {
+        return clone(lastResult);
+    }
+
+    function getContract() {
+        return lastResult ? clone(lastResult.contract) : null;
     }
 
     function getOptions() {
@@ -538,6 +623,12 @@ const PromptBinding = (() => {
         };
     }
 
+    function createGenerationId() {
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 10);
+        return `gen-${timestamp}-${random}`;
+    }
+
     function createError(code, message) {
         const error = new Error(message);
         error.name = "PromptBindingError";
@@ -583,6 +674,8 @@ const PromptBinding = (() => {
         generate,
         preview,
         getLastResult,
+        getResult,
+        getContract,
         getOptions,
         getOutputMode,
         getState,

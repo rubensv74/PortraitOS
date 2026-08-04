@@ -1783,6 +1783,21 @@ const ExportBinding = (() => {
                 clearPreview()
         );
 
+        const importFileInput = document.querySelector("[data-import-package-file]");
+        if (importFileInput) {
+            bindDomEvent(
+                importFileInput,
+                "change",
+                (event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                        importPackage(file).catch(handleUnhandledError);
+                        event.target.value = "";
+                    }
+                }
+            );
+        }
+
         [
             elements.type,
             elements.format,
@@ -3155,6 +3170,123 @@ const ExportBinding = (() => {
     }
 
     /* ========================================================
+       IMPORTACIÓN DE PAQUETES
+       ======================================================== */
+
+    async function importPackage(file, options = {}) {
+        ensureInitialized();
+
+        transition(
+            STATUS.PREPARING,
+            { error: null }
+        );
+
+        try {
+            const text = await readFileAsText(file);
+            const pkg = JSON.parse(text);
+
+            const service = window.PromptExportService;
+            if (!service || typeof service.validatePackage !== "function") {
+                throw createBindingError(
+                    "EXPORT_SERVICE_UNAVAILABLE",
+                    "El servicio de exportación no está disponible."
+                );
+            }
+
+            const validation = service.validatePackage(pkg);
+
+            if (!validation.valid) {
+                state = {
+                    ...state,
+                    status: STATUS.ERROR,
+                    error: normalizeError(
+                        createBindingError(
+                            "PACKAGE_INVALID",
+                            `Paquete inválido: ${validation.errors.join("; ")}`
+                        )
+                    )
+                };
+                render();
+                throw createBindingError(
+                    "PACKAGE_INVALID",
+                    `Paquete inválido: ${validation.errors.join("; ")}`
+                );
+            }
+
+            if (options.preview === true) {
+                state = {
+                    ...state,
+                    status: STATUS.READY,
+                    preview: JSON.stringify(validation.preview, null, 2),
+                    exportType: "package-import-preview",
+                    format: FORMATS.JSON,
+                    error: null
+                };
+                render();
+                return validation;
+            }
+
+            const result = await service.importPackage(pkg, {
+                strategy: options.strategy || "merge"
+            });
+
+            state = {
+                ...state,
+                status: STATUS.READY,
+                result,
+                preview: JSON.stringify(result, null, 2),
+                exportType: "package-imported",
+                format: FORMATS.JSON,
+                completedAt: new Date().toISOString(),
+                error: null
+            };
+
+            render();
+            emitStateChanged();
+
+            emit(EVENTS.EXPORT_COMPLETED, {
+                type: "package-imported",
+                format: FORMATS.JSON,
+                result: clone(result)
+            });
+
+            showNotification(
+                "Paquete PortraitOS importado correctamente.",
+                "success"
+            );
+
+            return deepFreeze(clone(result));
+        } catch (error) {
+            const normalizedError = normalizeError(error);
+
+            state = {
+                ...state,
+                status: STATUS.ERROR,
+                error: normalizedError
+            };
+
+            render();
+            emitStateChanged();
+
+            showNotification(
+                normalizedError.message,
+                "error"
+            );
+
+            throw error;
+        }
+    }
+
+    function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
+            reader.readAsText(file);
+        });
+    }
+
+    /* ========================================================
        API PÚBLICA
        ======================================================== */
 
@@ -3179,6 +3311,8 @@ const ExportBinding = (() => {
         preview,
         clearPreview,
         copyCurrent,
+
+        importPackage,
 
         getState,
         getPreview,
