@@ -2342,7 +2342,7 @@
                                 <h2 id="review-studio-title">Revisar imagen generada</h2>
                                 <p>Comprueba manualmente que la imagen respeta la identidad permanente y la dirección creativa del perfil activo.</p>
                             </div>
-                            <span class="review-status" data-review-status data-status="pending">Sin evaluar</span>
+                            <span class="review-status" data-review-status data-status="draft">Borrador</span>
                         </div>
 
                         <div class="review-studio__layout">
@@ -2362,28 +2362,256 @@
                             </article>
 
                             <article class="card review-studio__checklist">
-                                <header class="card__header"><div><h3>Checklist de identidad</h3><p>Marca el resultado observado en cada criterio.</p></div></header>
+                                <header class="card__header">
+                                    <div>
+                                        <h3>Checklist de revisión</h3>
+                                        <p>Evalúa cada criterio con resultado y severidad.</p>
+                                    </div>
+                                    <div class="review-studio__score">
+                                        <span data-review-score>0</span>
+                                        <small data-review-score-details>Sin evaluar</small>
+                                    </div>
+                                </header>
                                 <div class="card__body review-checklist">
-                                    <div class="review-check" data-criterion="face"><strong>Rostro y proporciones</strong><span>La estructura facial coincide con el perfil.</span><div>
-                                        <label><input type="radio" name="review-face" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-face" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-face" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-face" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="review-check"><strong>Edad aparente</strong><span>La edad visual permanece estable.</span><div>
-                                        <label><input type="radio" name="review-age" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-age" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-age" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-age" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="review-check"><strong>Cabello y canas</strong><span>Color, textura, patrón y densidad se conservan.</span><div>
-                                        <label><input type="radio" name="review-hair" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-hair" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-hair" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-hair" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="review-check"><strong>Barba y vello facial</strong><span>Forma, densidad y color son coherentes.</span><div>
-                                        <label><input type="radio" name="review-beard" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-beard" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-beard" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-beard" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="review-check"><strong>Piel</strong><span>Tono, textura, arrugas y marcas se mantienen.</span><div>
-                                        <label><input type="radio" name="review-skin" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-skin" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-skin" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-skin" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="review-check"><strong>Rasgos distintivos</strong><span>Asimetrías y detalles únicos siguen presentes.</span><div>
-                                        <label><input type="radio" name="review-features" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-features" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-features" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-features" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="review-check"><strong>Accesorios permanentes</strong><span>Los elementos definidos como identidad aparecen correctamente.</span><div>
-                                        <label><input type="radio" name="review-accessories" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-accessories" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-accessories" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-accessories" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="review-check"><strong>Dirección creativa</strong><span>Vestuario, luz, pose y escena respetan la intención definida.</span><div>
-                                        <label><input type="radio" name="review-direction" value="pending" data-review-check checked> Pendiente</label><label><input type="radio" name="review-direction" value="pass" data-review-check> Conforme</label><label><input type="radio" name="review-direction" value="review" data-review-check> Revisar</label><label><input type="radio" name="review-direction" value="fail" data-review-check> No conforme</label></div></div>
-                                    <div class="form-field"><label for="review-notes">Observaciones</label><textarea id="review-notes" rows="5" data-review-notes placeholder="Describe desviaciones, correcciones o razones de aprobación."></textarea></div>
+                                    <div class="review-studio__meta">
+                                        <div class="form-field"><label for="review-generation-id">Generation ID</label><input type="text" id="review-generation-id" data-review-generation-id placeholder="Opcional: vincula con una generación"></div>
+                                        <div class="form-field"><label for="review-contract-id">Contract ID</label><input type="text" id="review-contract-id" data-review-contract-id placeholder="Opcional: vincula con un contrato"></div>
+                                        <div class="form-field"><label for="review-contract-hash">Contract Hash</label><input type="text" id="review-contract-hash" data-review-contract-hash placeholder="Hash del contrato"></div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="identity">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Identidad</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="critical">Crítico</span>
+                                        </div>
+                                        <span>La identidad del sujeto se reconoce correctamente.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-identity-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-identity-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-identity-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-identity-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-identity-severity" value="critical" data-review-check-severity checked> Crítico</label>
+                                                <label><input type="radio" name="review-identity-severity" value="major" data-review-check-severity> Mayor</label>
+                                                <label><input type="radio" name="review-identity-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-identity-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='identity' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="hair">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Cabello</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="major">Mayor</span>
+                                        </div>
+                                        <span>Color, textura, patrón y densidad del cabello.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-hair-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-hair-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-hair-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-hair-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-hair-severity" value="critical" data-review-check-severity> Crítico</label>
+                                                <label><input type="radio" name="review-hair-severity" value="major" data-review-check-severity checked> Mayor</label>
+                                                <label><input type="radio" name="review-hair-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-hair-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='hair' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="skin">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Piel</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="major">Mayor</span>
+                                        </div>
+                                        <span>Tono, textura, arrugas y marcas de la piel.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-skin-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-skin-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-skin-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-skin-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-skin-severity" value="critical" data-review-check-severity> Crítico</label>
+                                                <label><input type="radio" name="review-skin-severity" value="major" data-review-check-severity checked> Mayor</label>
+                                                <label><input type="radio" name="review-skin-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-skin-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='skin' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="proportions">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Proporciones</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="critical">Crítico</span>
+                                        </div>
+                                        <span>Proporciones faciales y corporales correctas.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-proportions-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-proportions-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-proportions-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-proportions-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-proportions-severity" value="critical" data-review-check-severity checked> Crítico</label>
+                                                <label><input type="radio" name="review-proportions-severity" value="major" data-review-check-severity> Mayor</label>
+                                                <label><input type="radio" name="review-proportions-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-proportions-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='proportions' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="distinctiveFeatures">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Rasgos distintivos</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="critical">Crítico</span>
+                                        </div>
+                                        <span>Asimetrías, pecas, cicatrices y detalles únicos.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-distinctiveFeatures-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-distinctiveFeatures-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-distinctiveFeatures-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-distinctiveFeatures-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-distinctiveFeatures-severity" value="critical" data-review-check-severity checked> Crítico</label>
+                                                <label><input type="radio" name="review-distinctiveFeatures-severity" value="major" data-review-check-severity> Mayor</label>
+                                                <label><input type="radio" name="review-distinctiveFeatures-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-distinctiveFeatures-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='distinctiveFeatures' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="permanentAccessories">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Accesorios permanentes</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="minor">Menor</span>
+                                        </div>
+                                        <span>Gafas, piercings, tatuajes u otros accesorios definidos.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-permanentAccessories-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-permanentAccessories-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-permanentAccessories-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-permanentAccessories-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-permanentAccessories-severity" value="critical" data-review-check-severity> Crítico</label>
+                                                <label><input type="radio" name="review-permanentAccessories-severity" value="major" data-review-check-severity> Mayor</label>
+                                                <label><input type="radio" name="review-permanentAccessories-severity" value="minor" data-review-check-severity checked> Menor</label>
+                                                <label><input type="radio" name="review-permanentAccessories-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='permanentAccessories' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="creativeDirection">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Dirección creativa</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="major">Mayor</span>
+                                        </div>
+                                        <span>Vestuario, iluminación, pose y escena.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-creativeDirection-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-creativeDirection-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-creativeDirection-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-creativeDirection-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-creativeDirection-severity" value="critical" data-review-check-severity> Crítico</label>
+                                                <label><input type="radio" name="review-creativeDirection-severity" value="major" data-review-check-severity checked> Mayor</label>
+                                                <label><input type="radio" name="review-creativeDirection-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-creativeDirection-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='creativeDirection' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="composition">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Composición</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="major">Mayor</span>
+                                        </div>
+                                        <span>Encuadre, regla de tercios, espacio negativo.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-composition-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-composition-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-composition-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-composition-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-composition-severity" value="critical" data-review-check-severity> Crítico</label>
+                                                <label><input type="radio" name="review-composition-severity" value="major" data-review-check-severity checked> Mayor</label>
+                                                <label><input type="radio" name="review-composition-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-composition-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='composition' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-checklist__category" data-review-category="technicalQuality">
+                                        <div class="review-checklist__header">
+                                            <strong data-category-label>Calidad técnica</strong>
+                                            <span class="review-severity-badge" data-category-severity data-severity="critical">Crítico</span>
+                                        </div>
+                                        <span>Resolución, enfoque, ruido, artefactos.</span>
+                                        <div class="review-checklist__options">
+                                            <div class="review-checklist__results">
+                                                <label><input type="radio" name="review-technicalQuality-result" value="not_reviewed" data-review-check-result checked> Sin revisar</label>
+                                                <label><input type="radio" name="review-technicalQuality-result" value="pass" data-review-check-result> Aprobado</label>
+                                                <label><input type="radio" name="review-technicalQuality-result" value="fail" data-review-check-result> Rechazado</label>
+                                                <label><input type="radio" name="review-technicalQuality-result" value="not_applicable" data-review-check-result> No aplica</label>
+                                            </div>
+                                            <div class="review-checklist__severities">
+                                                <label><input type="radio" name="review-technicalQuality-severity" value="critical" data-review-check-severity checked> Crítico</label>
+                                                <label><input type="radio" name="review-technicalQuality-severity" value="major" data-review-check-severity> Mayor</label>
+                                                <label><input type="radio" name="review-technicalQuality-severity" value="minor" data-review-check-severity> Menor</label>
+                                                <label><input type="radio" name="review-technicalQuality-severity" value="informational" data-review-check-severity> Informativo</label>
+                                            </div>
+                                            <textarea rows="2" data-review-check-notes='technicalQuality' placeholder="Notas opcionales..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label for="review-summary">Resumen</label>
+                                        <textarea id="review-summary" rows="3" data-review-summary placeholder="Resumen general de la revisión."></textarea>
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label for="review-decision-reason">Razón de la decisión</label>
+                                        <textarea id="review-decision-reason" rows="2" data-review-decision-reason placeholder="Explica la razón si apruebas o rechazas."></textarea>
+                                    </div>
+
+                                    <div class="form-field">
+                                        <label for="review-status-select">Estado</label>
+                                        <select id="review-status-select" data-review-status-select>
+                                            <option value="draft">Borrador</option>
+                                            <option value="needs_review">Requiere revisión</option>
+                                            <option value="approved">Aprobada</option>
+                                            <option value="rejected">Rechazada</option>
+                                        </select>
+                                    </div>
+
                                     <p class="review-studio__message" data-review-message></p>
                                 </div>
-                                <footer class="card__footer review-studio__actions"><button type="button" class="button button--secondary" data-action="reset-review">Nueva revisión</button><button type="button" class="button button--primary" data-action="save-review">Guardar revisión</button></footer>
+                                <footer class="card__footer review-studio__actions">
+                                    <button type="button" class="button button--secondary" data-action="reset-review">Nueva revisión</button>
+                                    <button type="button" class="button button--primary" data-action="save-review">Guardar revisión</button>
+                                </footer>
                             </article>
                         </div>
 
