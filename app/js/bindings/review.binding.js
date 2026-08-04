@@ -97,17 +97,23 @@ const ReviewBinding = (() => {
         const labels = { approved: "Aprobada", review: "Requiere revisión", rejected: "Rechazada", pending: "Sin evaluar" };
         list.innerHTML = reviews.map(item => `
             <article class="review-history__item">
-                <img src="${escapeAttribute(item.image)}" alt="${escapeAttribute(item.imageName || "Imagen revisada")}">
+                <img src="" alt="${escapeAttribute(item.imageName || "Imagen revisada")}" data-review-thumb="${escapeAttribute(item.id)}">
                 <div><strong>${escapeHtml(item.imageName || "Imagen sin nombre")}</strong><small>${formatDate(item.updatedAt)}</small><span class="review-status" data-status="${item.status}">${labels[item.status] || labels.pending}</span></div>
                 <div class="review-history__actions"><button type="button" class="button button--tertiary" data-review-load="${item.id}">Abrir</button><button type="button" class="button button--tertiary" data-review-delete="${item.id}">Eliminar</button></div>
             </article>`).join("");
+        reviews.forEach(item => {
+            PortraitReviewService.resolveImage(item).then(src => {
+                const image = list.querySelector(`[data-review-thumb="${item.id}"]`);
+                if (image) image.src = src;
+            });
+        });
     }
 
-    function loadReview(reviewId) {
+    async function loadReview(reviewId) {
         const review = PortraitReviewService.list(getProfileId()).find(item => item.id === reviewId);
         if (!review) return;
         currentReviewId = review.id;
-        currentImage = review.image;
+        currentImage = await PortraitReviewService.resolveImage(review);
         currentImageName = review.imageName;
         renderImage();
         CHECKS.forEach(key => {

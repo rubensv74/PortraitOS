@@ -106,7 +106,7 @@ const KnowledgePackService = (() => {
         if (profileId && hasPack(map[profileId])) return map[profileId];
 
         try {
-            return normalizeId(window.localStorage.getItem(STORAGE_KEY));
+            return normalizeId(window.ProfileStorage?.knowledge?.load(STORAGE_KEY));
         } catch (error) {
             return "none";
         }
@@ -117,11 +117,11 @@ const KnowledgePackService = (() => {
         const profileId = normalizeText(profile?.id);
 
         try {
-            window.localStorage.setItem(STORAGE_KEY, pack.id);
+            window.ProfileStorage?.knowledge?.save(STORAGE_KEY, pack.id);
             if (profileId) {
                 const map = readProfileSelections();
                 map[profileId] = pack.id;
-                window.localStorage.setItem(STORAGE_BY_PROFILE_KEY, JSON.stringify(map));
+                window.ProfileStorage?.knowledge?.save(STORAGE_BY_PROFILE_KEY, JSON.stringify(map));
             }
         } catch (error) {
             console.warn("PortraitOS: no se pudo persistir la selección del Knowledge Pack.", error);
@@ -164,7 +164,7 @@ const KnowledgePackService = (() => {
 
     function readProfileSelections() {
         try {
-            const parsed = JSON.parse(window.localStorage.getItem(STORAGE_BY_PROFILE_KEY) || "{}");
+            const parsed = JSON.parse(window.ProfileStorage?.knowledge?.load(STORAGE_BY_PROFILE_KEY) || "{}");
             return isPlainObject(parsed) ? parsed : {};
         } catch (error) {
             return {};

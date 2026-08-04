@@ -71,7 +71,7 @@ const PortraitReviewService = (() => {
 
     function read() {
         try {
-            const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+            const parsed = JSON.parse(ProfileStorage.review.load(STORAGE_KEY) || "null");
             if (parsed && parsed.reviews && typeof parsed.reviews === "object") return parsed;
         } catch (error) {
             console.warn("PortraitOS: no se pudo leer el historial de revisiones.", error);
@@ -79,9 +79,25 @@ const PortraitReviewService = (() => {
         return { version: VERSION, reviews: {} };
     }
 
+    async function resolveImage(review) {
+        const image = review?.image;
+        if (!image) return "";
+        if (typeof image === "string") return image;
+        if (image && typeof image === "object" && image.binaryId) {
+            try {
+                const binary = await ProfileStorage.binary.get(image.binaryId);
+                return binary?.blob ? await blobToDataUrl(binary.blob) : "";
+            } catch (error) {
+                console.warn("PortraitOS: no se pudo resolver la imagen de la revisión.", error);
+                return "";
+            }
+        }
+        return "";
+    }
+
     function write(state) {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            ProfileStorage.review.save(STORAGE_KEY, JSON.stringify(state));
         } catch (error) {
             throw createError("STORAGE_FAILED", "No se pudo guardar la revisión. La imagen puede ser demasiado grande para el almacenamiento local.");
         }
@@ -92,6 +108,8 @@ const PortraitReviewService = (() => {
         return `review-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
+    function blobToDataUrl(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); }); }
+
     function normalizeText(value) { return String(value || "").trim(); }
     function clone(value) { return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
     function createError(code, message) { const error = new Error(message); error.name = "PortraitReviewError"; error.code = code; return error; }
@@ -100,7 +118,7 @@ const PortraitReviewService = (() => {
         else window.dispatchEvent(new CustomEvent(name, { detail }));
     }
 
-    return Object.freeze({ list, save, remove, clear, calculateStatus });
+    return Object.freeze({ list, save, remove, clear, calculateStatus, resolveImage });
 })();
 
 window.PortraitReviewService = PortraitReviewService;

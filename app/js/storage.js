@@ -30,9 +30,9 @@ const PortraitStorage = (() => {
 
             const testKey = "__portraitos_storage_test__";
 
-            localStorage.setItem(testKey, testKey);
+            ProfileStorage.legacy.setItem(testKey, testKey);
 
-            localStorage.removeItem(testKey);
+            ProfileStorage.legacy.removeItem(testKey);
 
             return true;
 
@@ -534,7 +534,7 @@ const PortraitStorage = (() => {
             normalized.metadata.updatedAt =
                 nowISO();
 
-            localStorage.setItem(
+            ProfileStorage.legacy.setItem(
 
                 STORAGE_KEY,
 
@@ -584,7 +584,7 @@ const PortraitStorage = (() => {
         }
 
         const rawProfile =
-            localStorage.getItem(
+            ProfileStorage.legacy.getItem(
                 STORAGE_KEY
             );
 
@@ -635,7 +635,7 @@ const PortraitStorage = (() => {
 
         }
 
-        localStorage.removeItem(
+        ProfileStorage.legacy.removeItem(
             STORAGE_KEY
         );
 
@@ -717,7 +717,7 @@ const PortraitStorage = (() => {
 
         try {
 
-            localStorage.setItem(
+            ProfileStorage.legacy.setItem(
 
                 SETTINGS_KEY,
 
@@ -752,7 +752,7 @@ const PortraitStorage = (() => {
         const savedSettings =
             safeParse(
 
-                localStorage.getItem(
+                ProfileStorage.legacy.getItem(
                     SETTINGS_KEY
                 ),
 
@@ -847,7 +847,7 @@ const PortraitStorage = (() => {
 
         try {
 
-            localStorage.setItem(
+            ProfileStorage.legacy.setItem(
 
                 SESSION_KEY,
 
@@ -888,7 +888,7 @@ const PortraitStorage = (() => {
         const session =
             safeParse(
 
-                localStorage.getItem(
+                ProfileStorage.legacy.getItem(
                     SESSION_KEY
                 ),
 
@@ -928,7 +928,7 @@ const PortraitStorage = (() => {
 
         }
 
-        localStorage.removeItem(
+        ProfileStorage.legacy.removeItem(
             SESSION_KEY
         );
 

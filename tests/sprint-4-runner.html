@@ -1,0 +1,137 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>PortraitOS Sprint 4 tests</title></head>
+<body><pre id="results" data-test-status="running">RUNNING</pre><script>
+"use strict";
+const out=document.getElementById("results"),results=[]; const wait=ms=>new Promise(r=>setTimeout(r,ms));
+let step="boot";const mark=(s)=>{step=s;out.dataset.step=s;};
+function postResults(){try{const body=JSON.stringify({status:out.dataset.testStatus||"running",text:out.textContent,step:out.dataset.step||""});fetch("/results",{method:"POST",headers:{"Content-Type":"application/json"},body});}catch(e){}}
+const watchdog=setTimeout(()=>{render(true);out.textContent+=`\nHANG_STEP=${step}`;postResults();},30000);
+function render(final=false){const pass=results.filter(x=>x.pass).length;out.textContent=results.map(x=>`${x.pass?"PASS":"FAIL"} ${x.name}${x.detail?` — ${x.detail}`:""}`).join("\n");if(final){clearTimeout(watchdog);out.dataset.testStatus=pass===results.length?"passed":"failed";out.textContent+=`\nSUMMARY ${pass}/${results.length}`;postResults();}}
+function check(name,value,detail=""){results.push({name,pass:value===true,detail});render();if(!value)throw new Error(`${name}: ${detail}`);}
+function pngDataUrl(w,size=64,color="#6d4aff"){const c=w.document.createElement("canvas");c.width=size;c.height=size;const x=c.getContext("2d");x.fillStyle=color;x.fillRect(0,0,size,size);return c.toDataURL("image/png");}
+function imageFile(w){const dataUrl=pngDataUrl(w,640);const b=w.atob(dataUrl.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return new w.File([a],"synthetic-s4.png",{type:"image/png"});}
+const frame=document.createElement("iframe");frame.src="../app/index.html";document.body.append(frame);
+frame.addEventListener("load",async()=>{const w=frame.contentWindow;try{if(!w.document.documentElement.hasAttribute("data-portraitos-ready"))return;await w.ProfileStorage.ready();
+  const errors=[];w.addEventListener("error",e=>errors.push(e.message));w.addEventListener("unhandledrejection",e=>errors.push(String(e.reason)));
+
+  /* ---- A. Migración binaria idempotente ---- */
+  check("A backend listo",w.ProfileStorage.getStatus().backend==="indexeddb");
+  const imported=await w.PhotosBinding.addFiles([imageFile(w)]);
+  check("A Data URL transitoria",imported.added.length===1&&imported.added[0].source.dataUrl.startsWith("data:"));
+  let flushErr=null;try{await w.ProfileStorage.flush();}catch(e){flushErr=e;}
+  check("A flush confirmado",!flushErr,flushErr?(flushErr.cause?(flushErr.cause.stack||flushErr.cause.message):flushErr.stack):"");
+  const aggregate=w.ProfileStorage.loadLibrary();
+  check("A agregado sin Data URLs",!JSON.stringify(aggregate).includes("data:image"));
+  const photo=aggregate.profiles.find(p=>p.id===w.ProfileService.getActive().id).identity.photos[0];
+  check("A referencias binarias",Boolean(photo.source.binaryId&&photo.thumbnail.binaryId));
+  const original=await w.ProfileStorage.binary.get(photo.source.binaryId);
+  check("A original Blob",original.blob instanceof w.Blob);
+  check("A checksum conservado",original.checksum===photo.checksum);
+  const url=await w.ObjectURLRegistry.create(photo.source.binaryId);
+  check("A Object URL creada",typeof url==="string"&&url.startsWith("blob:")&&w.ObjectURLRegistry.has(photo.source.binaryId));
+  check("A Object URL registrada",w.ObjectURLRegistry.getStats().created>=1);
+  w.ObjectURLRegistry.revoke(photo.source.binaryId);
+  check("A Object URL revocada",!w.ObjectURLRegistry.has(photo.source.binaryId)&&w.ObjectURLRegistry.getStats().revoked>=1);
+  check("A revocación idempotente",!w.ObjectURLRegistry.revoke(photo.source.binaryId));
+  w.ObjectURLRegistry.reset();
+
+  /* ---- A2. Migración de imágenes de Review ---- */
+  const pid=w.ProfileService.getActive().id;
+  const inlineReview={version:"1.0",reviews:{[pid]:[{id:"rev-mig-1",profileId:pid,image:pngDataUrl(w),imageName:"inline.png",checks:{face:"approved"},status:"approved",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),version:"1.0"}]}};
+  w.localStorage.setItem("portraitos.reviews.v1",JSON.stringify(inlineReview));
+  w.localStorage.removeItem("portraitos.reviews.v1.legacy-backup");
+  w.ProfileStorage.configureForTests({reset:true,mode:"auto",failPoint:null,indexedDBAvailable:true});
+  await w.ProfileStorage.init();
+  const migratedState=JSON.parse(w.localStorage.getItem("portraitos.reviews.v1"));
+  const migratedReview=migratedState.reviews[pid][0];const reviewBinaryId=migratedReview.image.binaryId;
+  check("A2 review migrado a referencia",Boolean(reviewBinaryId)&&typeof migratedReview.image==="object");
+  check("A2 binario de review persistido",await w.ProfileStorage.binary.exists(reviewBinaryId));
+  check("A2 backup legacy conservado",Boolean(w.localStorage.getItem("portraitos.reviews.v1.legacy-backup")));
+  const reviewBackup=JSON.parse(w.localStorage.getItem("portraitos.reviews.v1.legacy-backup"));
+  check("A2 backup conserva imagen inline",typeof reviewBackup.reviews[pid][0].image==="string"&&reviewBackup.reviews[pid][0].image.startsWith("data:"));
+  const resolvedReview=await w.PortraitReviewService.resolveImage({image:{binaryId:reviewBinaryId}});
+  check("A2 resolveImage recupera datos",typeof resolvedReview==="string"&&resolvedReview.startsWith("data:"));
+  w.ProfileStorage.configureForTests({reset:true,mode:"auto",failPoint:null,indexedDBAvailable:true});
+  await w.ProfileStorage.init();
+  const idempotentState=JSON.parse(w.localStorage.getItem("portraitos.reviews.v1"));
+  check("A2 migración idempotente",typeof idempotentState.reviews[pid][0].image==="object"&&idempotentState.reviews[pid][0].image.binaryId===reviewBinaryId);
+
+  /* ---- B. Cuota instrumentada ---- */
+  const stableName=aggregate.profiles[0].name;
+  mark("B.set-quota");w.ProfileStorage.configureForTests({quotaLimit:1});
+  mark("B.save");w.ProfileService.update({name:"No debe confirmar"});w.ProfileManager.saveActive();
+  mark("B.flush-quota");let quota=false;try{await w.ProfileStorage.flush();}catch(e){quota=e.code==="STORAGE_QUOTA";}
+  check("B cuota rechazada",quota);
+  check("B rollback conserva versión",w.ProfileStorage.loadLibrary().profiles[0].name===stableName);
+  mark("B.release-quota");w.ProfileStorage.configureForTests({quotaLimit:null});
+  mark("B.flush-recover");await w.ProfileStorage.flush();
+  mark("B.recovery");check("B recovery tras liberar cuota",w.ProfileStorage.getStatus().journalState==="clean");
+
+  /* ---- C. Interrupción instrumentada ---- */
+  mark("C.before");const before=w.ProfileStorage.loadLibrary().profiles[0].description;
+  mark("C.set-failpoint");w.ProfileStorage.configureForTests({failPoint:"mid_transaction"});
+  mark("C.save");w.ProfileService.update({description:"interrupted"});w.ProfileManager.saveActive();
+  mark("C.flush");let aborted=false;try{await w.ProfileStorage.flush();}catch(e){aborted=e.code==="STORAGE_WRITE_FAILED";}
+  check("C aborto intermedio detectado",aborted);
+  check("C estado anterior recuperado",w.ProfileStorage.loadLibrary().profiles[0].description===before);
+  w.ProfileStorage.configureForTests({reset:true,mode:"auto",failPoint:null,indexedDBAvailable:true});
+  await w.ProfileStorage.init();
+  check("C journal resuelto",w.ProfileStorage.getStatus().journalState==="clean"&&w.ProfileStorage.loadLibrary().profiles[0].description===before);
+
+  /* ---- D. Consumidores legacy a través de la fachada ---- */
+  w.ProfileStorage.wizard.save("s4.wizard","wizard");w.ProfileStorage.knowledge.save("s4.knowledge","knowledge");w.ProfileStorage.history.save("s4.history",{entries:[1]});w.ProfileStorage.review.save("s4.review",{reviews:{}});
+  await w.ProfileStorage.flush();
+  check("D Wizard fachada",w.ProfileStorage.wizard.load("s4.wizard")==="wizard");
+  check("D Knowledge fachada",w.ProfileStorage.knowledge.load("s4.knowledge")==="knowledge");
+  check("D History fachada",JSON.parse(w.ProfileStorage.history.load("s4.history")).entries.length===1);
+  check("D Review fachada",Boolean(JSON.parse(w.ProfileStorage.review.load("s4.review")).reviews));
+  check("D storage.js delegado",w.PortraitStorage.isStorageAvailable()===true);
+
+  /* ---- E. Backup/restore integral ---- */
+  const backup=await w.ProfileStorage.backup(),pack=JSON.parse(backup);
+  check("E manifest integral",pack.manifest.profiles>=1&&pack.manifest.binaries>=2&&pack.manifest.consumers>=4);
+  check("E binarios exportados",pack.binaries.every(x=>x.dataUrl.startsWith("data:")));
+  await w.ProfileStorage.restore(backup);
+  check("E restore validado",w.ProfileStorage.loadLibrary().profiles.length===pack.library.profiles.length);
+
+  /* ---- E2. Eliminación de foto libera sus binarios en el mismo commit ---- */
+  const lib=w.ProfileStorage.loadLibrary();
+  const remPhoto=lib.profiles[0].identity.photos[0];
+  const remSrc=remPhoto.source.binaryId,remThumb=remPhoto.thumbnail.binaryId;
+  w.ProfileService.photos.remove(remPhoto.id);
+  await w.ProfileStorage.flush();
+  check("E2 foto eliminada del library",!w.ProfileStorage.loadLibrary().profiles[0].identity.photos.some(p=>p.id===remPhoto.id));
+  const e2list=(await w.ProfileStorage.binary.list()).map(x=>x.binaryId);
+  check("E2 binario original liberado",!(await w.ProfileStorage.binary.exists(remSrc)),`list=[${e2list.join(",")}]`);
+  check("E2 miniatura liberada",!(await w.ProfileStorage.binary.exists(remThumb)));
+
+  /* ---- F. Aislamiento ---- */
+  const owner=w.ProfileStorage.loadLibrary().profiles[0].id;
+  check("F binarios aislados por propietario",(await w.ProfileStorage.binary.list()).every(item=>Boolean(item.profileId)));
+
+  /* ---- G. Huérfanos detectados, nunca borrados en silencio ---- */
+  const orphanId=`${owner}:orphan:original`;
+  await w.ProfileStorage.binary.put({binaryId:orphanId,profileId:owner,photoId:"orphan",kind:"original",blob:new w.Blob(["x"],{type:"text/plain"})});
+  const integrity=await w.ProfileStorage.validateIntegrity();
+  check("G huérfano reportado",integrity.orphanedRecords.some(x=>x.code==="orphan_binary"));
+  check("G no borrado silencioso",await w.ProfileStorage.binary.exists(orphanId));
+  const cleanup=await w.ProfileStorage.cleanupOrphans();
+  check("G limpieza explícita",cleanup.removed>=1&&!(await w.ProfileStorage.binary.exists(orphanId)));
+
+  /* ---- H. Modo localstorage ---- */
+  w.ProfileStorage.configureForTests({reset:true,mode:"localstorage",indexedDBAvailable:true});
+  await w.ProfileStorage.init();
+  check("H fallback forzado",w.ProfileStorage.getStatus().backend==="localstorage");
+
+  /* ---- I. Modo indexeddb obligatorio ---- */
+  w.ProfileStorage.configureForTests({reset:true,mode:"indexeddb",indexedDBAvailable:false});
+  let required=false;try{await w.ProfileStorage.init();}catch(e){required=e.code==="INDEXEDDB_REQUIRED";}
+  check("I indexeddb falla explícito",required);
+
+  /* ---- J. Modo auto degradado ---- */
+  w.ProfileStorage.configureForTests({reset:true,mode:"auto",indexedDBAvailable:false});
+  await w.ProfileStorage.init();
+  check("J auto degrada",w.ProfileStorage.getStatus().backend==="localstorage"&&w.ProfileStorage.getStatus().degraded);
+  check("sin errores runtime",errors.length===0,errors.join(" | "));
+  render(true);
+}catch(e){results.push({name:"runner",pass:false,detail:e.stack||e.message});render(true);}});
+</script></body></html>

@@ -32,6 +32,18 @@ const AppConstants = (() => {
             false
     });
 
+    const STORAGE = Object.freeze({
+        MODE: "auto",
+        MODES: Object.freeze(["auto", "indexeddb", "localstorage"]),
+        DATABASE: "portraitos",
+        VERSION: 2,
+        STORES: Object.freeze({
+            LIBRARY: "profile-library",
+            BINARY: "binary-assets",
+            LEGACY: "legacy-consumers"
+        })
+    });
+
     const PROFILE = Object.freeze({
         VERSION:
             "1.0.0",
@@ -760,6 +772,7 @@ const AppConstants = (() => {
 
     return Object.freeze({
         APP,
+        STORAGE,
         PROFILE,
         PHOTO,
         IDENTITY,

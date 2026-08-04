@@ -118,7 +118,9 @@ async function run(frame) {
 
         if (stage === "final-reload") {
             await wait(100);
-            record("reload final conserva perfil histórico", w.ProfileService.getActive().id === expected.historicalId);
+            const libDiag = w.ProfileStorage?.loadLibrary?.() || {};
+            const profileNames = (libDiag.profiles || []).map(p => `${p.name}|${p.id}`).join(" // ");
+            record("reload final conserva perfil histórico", w.ProfileService.getActive().id === expected.historicalId, `actual=${w.ProfileService.getActive()?.id} expected=${expected.historicalId} libActive=${libDiag.activeProfileId} profiles=${profileNames} PRE=${JSON.stringify(window.__preReloadDiag)}`);
             record("reload final conserva rasgo histórico", w.ProfileService.identity.getSection("face").description === "Rostro histórico preservado");
             record("reload final conserva evidencia histórica añadida", w.ProfileService.identity.getEvidence("face").length === 1);
             record("bindings únicos tras navegación", w.IdentityBinding.getState().initialized === true);
@@ -198,7 +200,13 @@ async function runRemainingScenarios(w) {
     record("una vinculación produce un evento", evidenceEvents === 1, String(evidenceEvents));
     record("sin evidencia duplicada", w.ProfileService.identity.getEvidence("face").length === 1);
     record("adaptador sourcePhotoIds sincronizado", w.ProfileService.identity.getSection("face").sourcePhotoIds[0] === historicalPhotoId);
-    expected.historicalId = historicalId; stage = "final-reload"; w.location.reload();
+    expected.historicalId = historicalId; stage = "final-reload";
+    const preReload = w.ProfileStorage?.loadLibrary?.() || {};
+    window.__preReloadDiag = { libProfiles: (preReload.profiles || []).map(p => `${p.name}|${p.id}`).join(" // "), libActive: preReload.activeProfileId, idbActive: null, fallbackActive: null };
+    try { window.__preReloadDiag.idbActive = await new Promise((resolve) => { const r = indexedDB.open("portraitos"); r.onsuccess = () => { const db = r.result; const tx = db.transaction("profile-library", "readonly"); const req = tx.objectStore("profile-library").get("active"); req.onsuccess = () => { const rec = req.result; resolve(rec ? { active: rec.payload?.activeProfileId, profiles: (rec.payload?.profiles || []).map(p => p.name).join(" // "), writtenAt: rec.writtenAt } : "none"); db.close(); }; req.onerror = () => resolve("error"); }; r.onerror = () => resolve("error"); }); } catch (e) { window.__preReloadDiag.idbActive = "err"; }
+    const fbk = localStorage.getItem("portraitos.storage.library.v2");
+    try { window.__preReloadDiag.fallbackActive = fbk ? (JSON.parse(fbk).payload?.activeProfileId || "n/a") + "|" + (JSON.parse(fbk).payload?.profiles || []).map(p => p.name).join(" // ") + "|" + JSON.parse(fbk).writtenAt : "none"; } catch (e) { window.__preReloadDiag.fallbackActive = "parse-err"; }
+    w.location.reload();
 }
 
 createFrame();

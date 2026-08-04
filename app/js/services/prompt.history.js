@@ -1673,39 +1673,7 @@ const PromptHistoryService = (() => {
 
     function readStorage() {
         try {
-            if (
-                window.PortraitStorage &&
-                typeof window
-                    .PortraitStorage
-                    .get ===
-                    "function"
-            ) {
-                return window
-                    .PortraitStorage
-                    .get(
-                        STORAGE_KEY
-                    );
-            }
-
-            if (
-                window.StorageService &&
-                typeof window
-                    .StorageService
-                    .get ===
-                    "function"
-            ) {
-                return window
-                    .StorageService
-                    .get(
-                        STORAGE_KEY
-                    );
-            }
-
-            return window
-                .localStorage
-                .getItem(
-                    STORAGE_KEY
-                );
+            return window.ProfileStorage?.history?.load(STORAGE_KEY) || null;
         } catch (error) {
             console.warn(
                 "[PortraitOS] Error leyendo Prompt History.",
@@ -1718,48 +1686,7 @@ const PromptHistoryService = (() => {
 
     function writeStorage(value) {
         try {
-            if (
-                window.PortraitStorage &&
-                typeof window
-                    .PortraitStorage
-                    .set ===
-                    "function"
-            ) {
-                window
-                    .PortraitStorage
-                    .set(
-                        STORAGE_KEY,
-                        value
-                    );
-
-                return;
-            }
-
-            if (
-                window.StorageService &&
-                typeof window
-                    .StorageService
-                    .set ===
-                    "function"
-            ) {
-                window
-                    .StorageService
-                    .set(
-                        STORAGE_KEY,
-                        value
-                    );
-
-                return;
-            }
-
-            window
-                .localStorage
-                .setItem(
-                    STORAGE_KEY,
-                    JSON.stringify(
-                        value
-                    )
-                );
+            window.ProfileStorage.history.save(STORAGE_KEY, value);
         } catch (error) {
             throw createHistoryError(
                 "HISTORY_PERSISTENCE_FAILED",

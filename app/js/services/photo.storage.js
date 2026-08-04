@@ -24,12 +24,15 @@ const PhotoStorage = (() => {
     }
 
     function describe() {
+        const storage = window.ProfileStorage?.describe?.() || {};
         return Object.freeze({
             strategy: STRATEGY,
             targetStrategy: TARGET_STRATEGY,
-            storesBinaryInline: true,
+            storesBinaryInline: false,
+            binaryLifecycle: "binary-assets",
             migrationReady: true,
-            backend: window.ProfileStorage?.describe?.().backend || "uninitialized"
+            backend: storage.backend || "uninitialized",
+            storageVersion: storage.storageVersion || null
         });
     }
 
