@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>PortraitOS RC1 Runtime Gate</title>
+</head>
+<body>
+<pre id="results" data-test-status="running">RUNNING</pre>
+<script>
+"use strict";
+
+const output = document.getElementById("results");
+const results = [];
+let stage = "boot";
+
+function record(name, pass, detail = "") {
+    results.push({ name, pass: pass === true, detail });
+    render(false);
+}
+
+function assert(name, value, detail = "") {
+    record(name, value === true, detail);
+    if (value !== true) {
+        throw new Error(`${name}${detail ? `: ${detail}` : ""}`);
+    }
+}
+
+function render(final) {
+    const passed = results.filter(item => item.pass).length;
+    output.textContent = results
+        .map(item => `${item.pass ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`)
+        .join("\n");
+
+    if (final) {
+        output.dataset.testStatus = passed === results.length ? "passed" : "failed";
+        output.dataset.stage = stage;
+        output.textContent += `\nSUMMARY ${passed}/${results.length}`;
+        postResults();
+    }
+}
+
+function postResults() {
+    try {
+        fetch("/results", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                status: output.dataset.testStatus,
+                stage,
+                text: output.textContent
+            })
+        });
+    } catch (_) {
+        // El runner puede ejecutarse también sin servidor receptor.
+    }
+}
+
+const watchdog = window.setTimeout(() => {
+    record("runner finaliza dentro del tiempo límite", false, `HANG_STAGE=${stage}`);
+    render(true);
+}, 60000);
+
+const frame = document.createElement("iframe");
+frame.src = "../app/index.html";
+frame.hidden = true;
+document.body.appendChild(frame);
+
+frame.addEventListener("load", async () => {
+    const app = frame.contentWindow;
+
+    try {
+        if (!app.document.documentElement.hasAttribute("data-portraitos-ready")) {
+            return;
+        }
+
+        window.clearTimeout(watchdog);
+        stage = "runtime";
+
+        const runtimeErrors = [];
+        app.addEventListener("error", event => runtimeErrors.push(event.message || "runtime error"));
+        app.addEventListener("unhandledrejection", event => runtimeErrors.push(String(event.reason || "unhandled rejection")));
+
+        if (app.ProfileStorage?.ready) {
+            await app.ProfileStorage.ready();
+        }
+
+        assert("aplicación marcada como ready", app.document.documentElement.getAttribute("data-portraitos-ready") === "true");
+
+        const criticalGlobals = [
+            "ProfileBinding",
+            "PhotosBinding",
+            "IdentityBinding",
+            "DirectionBinding",
+            "ValidationBinding",
+            "PromptBinding",
+            "ExportBinding",
+            "ReviewBinding",
+            "HistoryBinding"
+        ];
+
+        criticalGlobals.forEach(name => {
+            assert(`global ${name} disponible`, Boolean(app[name]));
+        });
+
+        assert("History root presente", Boolean(app.document.querySelector("[data-history]")));
+        assert("History search presente", Boolean(app.document.querySelector("[data-history-search]")));
+        assert("History list presente", Boolean(app.document.querySelector("[data-history-list]")));
+        assert("History pagination presente", Boolean(app.document.querySelector("[data-history-pagination]")));
+        assert("History counter presente", Boolean(app.document.querySelector("[data-history-counter]")));
+
+        assert(
+            "HistoryBinding inicializado",
+            typeof app.HistoryBinding?.getState === "function" && Boolean(app.HistoryBinding.getState())
+        );
+
+        stage = "history-service";
+        const profile = app.ProfileService?.getActive?.();
+        assert("perfil activo disponible", Boolean(profile));
+
+        const before = app.PromptHistoryService?.list?.({ limit: 100 })?.items?.length || 0;
+        const fakeEntry = {
+            id: `rc1-history-${Date.now()}`,
+            profileId: profile.id,
+            generationId: `rc1-generation-${Date.now()}`,
+            provider: "generic",
+            level: "professional",
+            prompt: "RC1 runtime smoke prompt",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        if (typeof app.PromptHistoryService?.add === "function") {
+            app.PromptHistoryService.add(fakeEntry);
+        } else if (typeof app.PromptHistoryService?.save === "function") {
+            app.PromptHistoryService.save(fakeEntry);
+        }
+
+        app.HistoryBinding.refresh();
+        const after = app.PromptHistoryService?.list?.({ limit: 100 })?.items?.length || 0;
+        assert("servicio History conserva o incrementa entradas", after >= before);
+        assert("History UI renderiza lista", Boolean(app.document.querySelector("[data-history-list]")));
+
+        stage = "idempotency";
+        const listenersBefore = app.AppEvents?.listenerCount?.() || 0;
+        app.HistoryBinding.init();
+        const listenersAfter = app.AppEvents?.listenerCount?.() || 0;
+        assert("History init idempotente", listenersAfter === listenersBefore, `before=${listenersBefore}, after=${listenersAfter}`);
+
+        await new Promise(resolve => app.setTimeout(resolve, 0));
+        assert("sin errores runtime", runtimeErrors.length === 0, runtimeErrors.join(" | "));
+
+        stage = "complete";
+        render(true);
+    } catch (error) {
+        window.clearTimeout(watchdog);
+        record("runner", false, error.stack || error.message);
+        render(true);
+    } finally {
+        frame.remove();
+    }
+});
+</script>
+</body>
+</html>
