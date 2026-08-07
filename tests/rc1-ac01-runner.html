@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>PortraitOS RC1 AC-01</title></head>
+<body>
+<pre id="results" data-test-status="running">RUNNING</pre>
+<iframe id="app" src="../app/index.html" hidden></iframe>
+<script>
+"use strict";
+const out = document.getElementById("results");
+const frame = document.getElementById("app");
+const results = [];
+
+function render(final = false) {
+    const passed = results.filter(item => item.passed).length;
+    out.textContent = results.map(item => `${item.passed ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`).join("\n");
+    if (final) {
+        out.dataset.testStatus = passed === results.length ? "passed" : "failed";
+        out.textContent += `\nSUMMARY ${passed}/${results.length}`;
+    }
+}
+function record(name, condition, detail = "") {
+    results.push({ name, passed: condition === true, detail });
+    render();
+    if (!condition) throw new Error(`${name}: ${detail}`);
+}
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function createImageFile(w) {
+    const canvas = w.document.createElement("canvas");
+    canvas.width = 720; canvas.height = 720;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#6d4aff"; ctx.fillRect(0, 0, 720, 720);
+    ctx.fillStyle = "white"; ctx.font = "64px sans-serif"; ctx.fillText("RC1", 275, 380);
+    const binary = w.atob(canvas.toDataURL("image/png").split(",")[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return new w.File([bytes], "rc1-ac01.png", { type: "image/png", lastModified: 1710000000000 });
+}
+
+async function run() {
+    const w = frame.contentWindow;
+    try {
+        for (let i = 0; i < 100; i += 1) {
+            if (w.document.documentElement.dataset.portraitosReady === "true") break;
+            await wait(50);
+        }
+        record("app ready", w.document.documentElement.dataset.portraitosReady === "true");
+
+        const added = await w.PhotosBinding.addFiles([createImageFile(w)]);
+        record("foto importada", added.added.length === 1, String(added.added.length));
+        const photo = w.ProfileService.photos.getPrimary();
+        record("foto principal disponible", Boolean(photo?.id));
+
+        const stepValidation = w.Wizard.validateStep("photos");
+        record("paso Fotografías válido", stepValidation.valid === true, JSON.stringify(stepValidation.errors || []));
+
+        w.UI.openModal({ title: "AC-01 Preview", content: "<div data-ac01-modal-content>visible</div>" });
+        await wait(50);
+        const root = w.document.querySelector("[data-modal-root]");
+        const modal = root?.querySelector(".modal");
+        const backdrop = root?.querySelector(".modal-backdrop");
+        const modalZ = Number(w.getComputedStyle(modal).zIndex || 0);
+        const backdropZ = Number(w.getComputedStyle(backdrop).zIndex || 0);
+        record("modal visible", root && root.hidden === false && Boolean(modal));
+        record("modal por encima del backdrop", modalZ > backdropZ, `modal=${modalZ} backdrop=${backdropZ}`);
+        w.UI.closeModal();
+        await wait(250);
+
+        const confirmPromise = w.UI.confirm({ title: "AC-01 delete", message: "confirm" });
+        await wait(30);
+        const accept = w.document.querySelector("[data-confirm='accept']");
+        record("confirmación visible", Boolean(accept));
+        accept.click();
+        record("confirmación resoluble", await confirmPromise === true);
+        await wait(250);
+
+        const removePromise = w.PhotosBinding.removePhoto ? w.PhotosBinding.removePhoto(photo.id) : null;
+        if (removePromise && typeof removePromise.then === "function") {
+            await wait(30);
+            w.document.querySelector("[data-confirm='accept']")?.click();
+            await removePromise;
+            await wait(50);
+            record("eliminación efectiva", w.ProfileService.photos.list().length === 0);
+        } else {
+            record("API eliminación expuesta", false, "PhotosBinding.removePhoto no disponible");
+        }
+
+        render(true);
+    } catch (error) {
+        results.push({ name: "runner", passed: false, detail: error.stack || error.message });
+        render(true);
+    }
+}
+
+frame.addEventListener("load", run, { once: true });
+</script>
+</body>
+</html>
