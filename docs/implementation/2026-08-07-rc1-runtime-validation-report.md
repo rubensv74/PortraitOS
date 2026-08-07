@@ -2,7 +2,7 @@
 
 ## Estado
 
-**RC1_RUNTIME_READY — FULL REGRESSION PENDING**
+**RC1_RUNTIME_READY — MERGE_READY**
 
 ## Rama
 
@@ -10,28 +10,25 @@
 
 ## Evidencia ejecutada en Windows
 
-### Sprint 2
+La validación final se realizó sobre la rama RC1 Runtime Fix con Chrome headless y los runners reproducibles del repositorio.
 
-- Resultado: **45/45 PASS**
-- Chrome exit: `0`
-- Estado: determinista en la ejecución posterior al cambio de rama.
+| Suite | Resultado |
+|---|---|
+| Sprint 0 | **20/20 PASS** |
+| Sprint 1 | **31/31 PASS** |
+| Sprint 2 | **45/45 PASS** |
+| Sprint 3 | **19/19 PASS** |
+| Sprint 4 | **42/42 PASS** |
+| Sprint 5 | **66/66 PASS** |
+| Sprint 6 | **66/66 PASS** |
+| RC1 Runtime Gate — ejecución 1 | **RC1_RUNTIME_READY** |
+| RC1 Runtime Gate — ejecución 2 | **RC1_RUNTIME_READY** |
 
-### Sprint 6
+`git diff --check` terminó sin errores y `git status --short` no mostró cambios locales pendientes durante la comprobación final.
 
-- Resultado: **66/66 PASS**
-- Estado: verde sobre la rama RC1 runtime.
+## RC1 Runtime Gate
 
-### RC1 Runtime Gate
-
-El gate se ejecutó dos veces consecutivas sobre la aplicación real.
-
-#### Ejecución 1
-
-- `STEP=complete`
-- `TEST_STATUS=passed`
-- `RC1_RUNTIME_READY`
-
-#### Ejecución 2
+Las dos ejecuciones consecutivas terminaron con:
 
 - `STEP=complete`
 - `TEST_STATUS=passed`
@@ -40,36 +37,32 @@ El gate se ejecutó dos veces consecutivas sobre la aplicación real.
 ## Qué queda demostrado
 
 1. La aplicación real alcanza `data-portraitos-ready=true`.
-2. `HistoryBinding` existe en runtime.
-3. `HistoryBinding` queda inicializado.
-4. El marcador `data-history-runtime-ready=true` está presente.
-5. El workspace History y sus selectores están disponibles.
-6. El historial se filtra por perfil activo.
-7. Cambio A → B → A funciona mediante `ProfileManager`.
-8. Búsqueda, filtros, restauración, comparación y eliminación son ejercitados por el gate.
-9. El gate termina sin bloqueo en dos ejecuciones consecutivas.
+2. `HistoryBinding` existe en runtime y queda inicializado.
+3. El marcador `data-history-runtime-ready=true` está presente.
+4. El workspace History y sus selectores están disponibles en la aplicación real.
+5. El historial se filtra por `profileId` del perfil activo.
+6. Cambio de perfil A → B → A funciona mediante `ProfileManager`.
+7. Un perfil no ve entradas History pertenecientes a otro perfil.
+8. Búsqueda, proveedor, nivel, etiquetas, restauración, comparación y eliminación son ejercitados por el gate.
+9. La inicialización de History es idempotente y mantiene un único root runtime.
+10. El gate finaliza sin errores runtime en dos ejecuciones consecutivas.
+11. Las suites Sprint 0–6 permanecen verdes tras la integración.
 
-## Correcciones realizadas durante la validación
+## Correcciones realizadas durante el gate
 
-- El lanzador RC1 fue ajustado para reportar el `step` real del runner.
-- El runner fue corregido para cambiar perfiles a través de `ProfileManager`, que es la API canónica para selección por ID.
+- Integración efectiva de `HistoryBinding` en el runtime real.
+- Workspace History accesible dentro del paso Generación.
+- Filtrado de History por perfil activo.
+- Bootstrap asíncrono e idempotente desde `ProfileManagerBinding`.
+- Restauración mediante `PromptHistoryService.restore()`.
+- Runtime smoke test sobre `app/index.html` real.
+- El lanzador RC1 fue corregido para reportar el `step` exacto del runner.
+- El runner fue corregido para cambiar perfiles mediante `ProfileManager`, la fachada canónica para selección por ID.
 
-## Validación todavía pendiente antes de merge
+## Conclusión
 
-La evidencia actual NO incluye una nueva ejecución completa de todas las suites sobre la rama final.
+El bloqueo RC1 identificado por la auditoría queda resuelto.
 
-Pendiente ejecutar en esta misma rama:
+La rama cumple el gate de integración de runtime y la regresión funcional completa disponible en el repositorio.
 
-- Sprint 0
-- Sprint 1
-- Sprint 3
-- Sprint 4
-- Sprint 5
-- `git diff --check`
-- comprobación sintáctica de todos los JavaScript
-
-Sprint 2 y Sprint 6 ya están confirmados en verde sobre la rama actual.
-
-## Criterio de merge
-
-La PR puede pasar a `MERGE_READY` únicamente cuando la regresión completa Sprint 0–6 y las validaciones estáticas estén verdes en el HEAD final.
+**Evaluación final: `MERGE_READY`.**
