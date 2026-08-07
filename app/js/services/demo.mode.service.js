@@ -200,7 +200,13 @@ const DemoModeService = (() => {
             onProgress("validation", "Validando readiness canónico.");
             const readiness = ProfileValidation.getGenerationReadiness();
             if (!readiness.ready) {
-                throw createError("DEMO_NOT_READY", readiness.errors?.[0]?.message || "El perfil demo no está listo para generar.");
+                const blockerCodes = Array.isArray(readiness.errors)
+                    ? readiness.errors.map(item => item.code).filter(Boolean)
+                    : [];
+                throw createError(
+                    "DEMO_NOT_READY",
+                    `${readiness.errors?.[0]?.message || "El perfil demo no está listo para generar."}${blockerCodes.length ? ` [${blockerCodes.join(", ")}]` : ""}`
+                );
             }
 
             onProgress("generation", "Generando Portrait Contract.");
