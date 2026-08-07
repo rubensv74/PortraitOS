@@ -30,6 +30,7 @@ const ProfileManagerBinding = (() => {
     function ensureHistoryRuntime() {
         if (window.HistoryBinding) {
             window.HistoryBinding.init();
+            markHistoryRuntimeReady();
             return Promise.resolve(window.HistoryBinding);
         }
         if (historyRuntimePromise) return historyRuntimePromise;
@@ -40,6 +41,7 @@ const ProfileManagerBinding = (() => {
                 const finish = () => {
                     if (!window.HistoryBinding) return reject(new Error("HistoryBinding no quedó disponible tras cargar el script."));
                     window.HistoryBinding.init();
+                    markHistoryRuntimeReady();
                     resolve(window.HistoryBinding);
                 };
                 if (existing.dataset.loaded === "true") finish();
@@ -59,7 +61,7 @@ const ProfileManagerBinding = (() => {
                 try {
                     if (!window.HistoryBinding) throw new Error("HistoryBinding no expuso su API global.");
                     window.HistoryBinding.init();
-                    document.documentElement.setAttribute("data-history-runtime-ready", "true");
+                    markHistoryRuntimeReady();
                     resolve(window.HistoryBinding);
                 } catch (error) {
                     reject(error);
@@ -73,6 +75,13 @@ const ProfileManagerBinding = (() => {
         });
 
         return historyRuntimePromise;
+    }
+
+    function markHistoryRuntimeReady() {
+        document.documentElement.setAttribute("data-history-runtime-ready", "true");
+        document.dispatchEvent(new CustomEvent("portraitos:history-runtime-ready", {
+            detail: { binding: window.HistoryBinding || null }
+        }));
     }
 
     function reportHistoryRuntimeError(error) {
@@ -138,7 +147,7 @@ const ProfileManagerBinding = (() => {
     function validateDependencies() {
         if (!window.ProfileManager || !window.ProfileService) throw new Error("Faltan dependencias de Profile Manager.");
     }
-    function escapeHtml(value) { return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
+    function escapeHtml(value) { return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;"); }
 
     return Object.freeze({ init, render, ensureHistoryRuntime });
 })();
