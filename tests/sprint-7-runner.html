@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>PortraitOS Sprint 7 Runner</title></head>
+<body>
+<pre id="out">RUNNING</pre>
+<iframe id="app" src="../app/index.html" hidden></iframe>
+<script>
+"use strict";
+(() => {
+    const lines = [];
+    let failed = false;
+    let step = "boot";
+    const out = document.getElementById("out");
+    const iframe = document.getElementById("app");
+
+    function pass(label, detail = "") { lines.push(`PASS ${label}${detail ? ` — ${detail}` : ""}`); }
+    function fail(label, detail = "") { failed = true; lines.push(`FAIL ${label}${detail ? ` — ${detail}` : ""}`); }
+    function check(condition, label, detail = "") { condition ? pass(label, detail) : fail(label, detail); }
+    function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    async function waitFor(predicate, timeout = 15000) {
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+            try { if (predicate()) return true; } catch (_) {}
+            await wait(100);
+        }
+        return false;
+    }
+
+    async function send() {
+        const status = failed ? "failed" : "passed";
+        lines.push(`SUMMARY ${failed ? "FAIL" : "PASS"}`);
+        const text = lines.join("\n");
+        out.textContent = text;
+        await fetch("/results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, step, text }) });
+    }
+
+    iframe.addEventListener("load", async () => {
+        const win = iframe.contentWindow;
+        const doc = iframe.contentDocument;
+        try {
+            step = "app-ready";
+            check(await waitFor(() => doc.documentElement.getAttribute("data-portraitos-ready") === "true"), "app ready");
+
+            step = "release-service";
+            check(Boolean(win.ReleaseMetadata), "ReleaseMetadata global");
+            check(Boolean(win.ReleaseMetadataBinding), "ReleaseMetadataBinding global");
+            check(await waitFor(() => doc.documentElement.getAttribute("data-release-metadata-ready") === "true"), "release metadata initialized");
+            check(Boolean(doc.querySelector("[data-release-version]")), "release version visible");
+            check(Boolean(doc.querySelector("[data-release-details]")), "release details visible");
+
+            step = "orientation";
+            check(Boolean(win.PromptOrientationBinding), "PromptOrientationBinding global");
+            check(await waitFor(() => doc.querySelector("[data-step-panel='prompt']")?.getAttribute("data-prompt-orientation-ready") === "true"), "orientation initialized");
+            const nav = doc.querySelector("[data-prompt-orientation]");
+            check(Boolean(nav), "orientation nav present");
+            check((nav?.querySelectorAll("[data-prompt-orientation-target]").length || 0) === 4, "orientation has four areas");
+            ["generate", "history", "export", "review"].forEach(id => check(Boolean(nav?.querySelector(`[data-prompt-orientation-target='${id}']`)), `orientation ${id}`));
+
+            step = "metadata-contract";
+            const metadata = await win.ReleaseMetadata.load({ force: true });
+            check(metadata.version === "1.0.0-rc.1", "RC1 version", metadata.version);
+            check(metadata.storageVersion === 2, "storage version", String(metadata.storageVersion));
+            check(metadata.channel === "rc", "release channel", metadata.channel);
+
+            step = "idempotency";
+            const before = doc.querySelectorAll("[data-prompt-orientation]").length;
+            win.PromptOrientationBinding.init();
+            const after = doc.querySelectorAll("[data-prompt-orientation]").length;
+            check(before === 1 && after === 1, "orientation init idempotent");
+
+            step = "complete";
+        } catch (error) {
+            fail("runtime exception", error?.stack || error?.message || String(error));
+        }
+        await send();
+    });
+})();
+</script>
+</body>
+</html>
