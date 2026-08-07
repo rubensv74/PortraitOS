@@ -64,6 +64,14 @@ try {
         if ($result.audit) {
             Write-Host "READINESS_AUDIT=$($result.audit | ConvertTo-Json -Depth 10 -Compress)" -ForegroundColor Yellow
         }
+        $failureLines = @($result.text -split "`n" | Where-Object { $_ -match '^FAIL ' })
+        if ($failureLines.Count -eq 0) {
+            Write-Host "FAILURE_DETAIL=No se recibió ninguna línea FAIL aunque el estado final fue failed." -ForegroundColor Red
+        } else {
+            foreach ($failureLine in $failureLines) {
+                Write-Host "FAILURE_DETAIL=$failureLine" -ForegroundColor Red
+            }
+        }
         throw "SPRINT_7_BLOCKED (stage=$($result.step))"
     }
     Write-Host "SPRINT_7_READY"
