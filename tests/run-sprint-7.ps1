@@ -59,10 +59,10 @@ try {
     Write-Host "STEP=$($result.step)"
     Write-Host "TEST_STATUS=$($result.status)"
     if ($result.status -ne "passed") {
-        Write-Host "RESULT_JSON=$($result | ConvertTo-Json -Depth 8 -Compress)" -ForegroundColor DarkYellow
-        $failureLines = @($result.text -split "`n" | Where-Object { $_ -like "FAIL*" })
-        foreach ($failureLine in $failureLines) {
-            Write-Host "FAILURE_DETAIL=$failureLine" -ForegroundColor Red
+        if ($result.errorCode) { Write-Host "ERROR_CODE=$($result.errorCode)" -ForegroundColor Red }
+        if ($result.errorMessage) { Write-Host "ERROR_MESSAGE=$($result.errorMessage)" -ForegroundColor Red }
+        if ($result.audit) {
+            Write-Host "READINESS_AUDIT=$($result.audit | ConvertTo-Json -Depth 10 -Compress)" -ForegroundColor Yellow
         }
         throw "SPRINT_7_BLOCKED (stage=$($result.step))"
     }
