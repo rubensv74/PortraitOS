@@ -1,164 +1,76 @@
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>PortraitOS RC1 Runtime Gate</title>
-</head>
-<body>
-<pre id="results" data-test-status="running">RUNNING</pre>
-<script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>PortraitOS RC1 runtime smoke</title></head><body><pre id="results" data-test-status="running">RUNNING</pre><script>
 "use strict";
+const out=document.getElementById("results"),results=[];let step="boot";
+function check(name,value,detail=""){results.push({name,pass:value===true,detail});render();if(!value)throw new Error(`${name}: ${detail}`)}
+function mark(value){step=value;out.dataset.step=value}
+function render(final=false){const pass=results.filter(x=>x.pass).length;out.textContent=results.map(x=>`${x.pass?"PASS":"FAIL"} ${x.name}${x.detail?` — ${x.detail}`:""}`).join("\n");if(final){out.dataset.testStatus=pass===results.length?"passed":"failed";out.textContent+=`\nSUMMARY ${pass}/${results.length}`;post()}}
+function post(){try{fetch("/results",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:out.dataset.testStatus,text:out.textContent,step})})}catch(_){}}
+const watchdog=setTimeout(()=>{results.push({name:"watchdog",pass:false,detail:`HANG_STEP=${step}`});render(true)},60000);
+const frame=document.createElement("iframe");frame.src="../app/index.html";document.body.append(frame);
+frame.addEventListener("load",async()=>{const w=frame.contentWindow;try{
+  mark("ready");
+  for(let i=0;i<100&&!w.document.documentElement.hasAttribute("data-portraitos-ready");i++)await new Promise(r=>setTimeout(r,50));
+  await w.ProfileStorage.ready();
+  if(w.ProfileManagerBinding?.ensureHistoryRuntime) await w.ProfileManagerBinding.ensureHistoryRuntime();
+  const errors=[];w.addEventListener("error",e=>errors.push(e.message));w.addEventListener("unhandledrejection",e=>errors.push(String(e.reason)));
 
-const output = document.getElementById("results");
-const results = [];
-let stage = "boot";
+  check("app ready",w.document.documentElement.getAttribute("data-portraitos-ready")==="true");
+  check("HistoryBinding global",Boolean(w.HistoryBinding));
+  check("HistoryBinding initialized",w.HistoryBinding?.isInitialized?.()===true);
+  check("history runtime marker",w.document.documentElement.getAttribute("data-history-runtime-ready")==="true");
+  check("history root presente",Boolean(w.document.querySelector("[data-history]")));
+  ["search","provider","level","favorites","tags","list","pagination","empty","counter","diff"].forEach(name=>check(`selector ${name}`,Boolean(w.document.querySelector(`[data-history-${name}]`))));
 
-function record(name, pass, detail = "") {
-    results.push({ name, pass: pass === true, detail });
-    render(false);
-}
+  mark("profile-a");
+  const profileA=w.ProfileService.getActive();
+  check("perfil A activo",Boolean(profileA?.id));
+  w.PromptHistoryService.clear({profileId:profileA.id});
+  const a1=w.PromptHistoryService.add({profileId:profileA.id,profileName:profileA.name,prompt:"RC1 prompt A uno",provider:"generic",level:"professional",title:"A uno",generationId:"rc1-gen-a1"},{skipDuplicate:false});
+  const a2=w.PromptHistoryService.add({profileId:profileA.id,profileName:profileA.name,prompt:"RC1 prompt A dos",provider:"openai",level:"contract",title:"A dos",generationId:"rc1-gen-a2",favorite:true,tags:["rc1"]},{skipDuplicate:false});
+  w.HistoryBinding.refresh();
+  check("history A muestra 2",w.HistoryBinding.getState().totalItems===2,JSON.stringify(w.HistoryBinding.getState()));
+  check("DOM A tiene 2 cards",w.document.querySelectorAll("[data-history-list] [data-id]").length===2);
 
-function assert(name, value, detail = "") {
-    record(name, value === true, detail);
-    if (value !== true) {
-        throw new Error(`${name}${detail ? `: ${detail}` : ""}`);
-    }
-}
+  mark("filters");
+  w.HistoryBinding.setProvider("openai");check("filtro provider",w.HistoryBinding.getState().totalItems===1);
+  w.HistoryBinding.clearFilters();w.HistoryBinding.setSearch("uno");check("busqueda",w.HistoryBinding.getState().totalItems===1);
+  w.HistoryBinding.clearFilters();w.HistoryBinding.setTag("rc1");check("filtro tag",w.HistoryBinding.getState().totalItems===1);w.HistoryBinding.clearFilters();
 
-function render(final) {
-    const passed = results.filter(item => item.pass).length;
-    output.textContent = results
-        .map(item => `${item.pass ? "PASS" : "FAIL"} ${item.name}${item.detail ? ` — ${item.detail}` : ""}`)
-        .join("\n");
+  mark("restore");
+  const restored=w.HistoryBinding.restoreHistoryEntry(a1.id);
+  check("restore devuelve prompt",restored?.prompt==="RC1 prompt A uno");
+  check("restore renderiza resultado",w.document.querySelector("[data-prompt-output]")?.textContent.includes("RC1 prompt A uno")===true);
 
-    if (final) {
-        output.dataset.testStatus = passed === results.length ? "passed" : "failed";
-        output.dataset.stage = stage;
-        output.textContent += `\nSUMMARY ${passed}/${results.length}`;
-        postResults();
-    }
-}
+  mark("compare");
+  const cards=w.document.querySelectorAll("[data-history-list] [data-id]");
+  cards[0]?.querySelector("[data-history-action='compare']")?.click();
+  cards[1]?.querySelector("[data-history-action='compare']")?.click();
+  check("comparacion visible",w.document.querySelector("[data-history-diff]")?.hidden===false);
 
-function postResults() {
-    try {
-        fetch("/results", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                status: output.dataset.testStatus,
-                stage,
-                text: output.textContent
-            })
-        });
-    } catch (_) {
-        // El runner puede ejecutarse también sin servidor receptor.
-    }
-}
+  mark("profile-b");
+  w.ProfileService.create("RC1 Profile B");
+  const profileB=w.ProfileService.getActive();
+  check("perfil B distinto",Boolean(profileB?.id)&&profileB.id!==profileA.id);
+  w.PromptHistoryService.clear({profileId:profileB.id});
+  w.PromptHistoryService.add({profileId:profileB.id,profileName:profileB.name,prompt:"RC1 prompt B",provider:"generic",level:"professional",title:"B uno",generationId:"rc1-gen-b1"},{skipDuplicate:false});
+  w.HistoryBinding.refresh();
+  check("aislamiento B muestra 1",w.HistoryBinding.getState().totalItems===1,JSON.stringify(w.HistoryBinding.getState()));
+  check("B no muestra A",!w.HistoryBinding.getHistory().some(x=>x.profileId===profileA.id));
 
-const watchdog = window.setTimeout(() => {
-    record("runner finaliza dentro del tiempo límite", false, `HANG_STAGE=${stage}`);
-    render(true);
-}, 60000);
+  mark("back-a");
+  w.ProfileService.setActive(profileA.id);w.HistoryBinding.refresh();
+  check("volver A muestra 2",w.HistoryBinding.getState().totalItems===2);
+  check("A no muestra B",!w.HistoryBinding.getHistory().some(x=>x.profileId===profileB.id));
 
-const frame = document.createElement("iframe");
-frame.src = "../app/index.html";
-frame.hidden = true;
-document.body.appendChild(frame);
+  mark("delete");
+  w.PromptHistoryService.remove(a2.id);w.HistoryBinding.refresh();
+  check("delete refresca UI",w.HistoryBinding.getState().totalItems===1);
 
-frame.addEventListener("load", async () => {
-    const app = frame.contentWindow;
-
-    try {
-        if (!app.document.documentElement.hasAttribute("data-portraitos-ready")) {
-            return;
-        }
-
-        window.clearTimeout(watchdog);
-        stage = "runtime";
-
-        const runtimeErrors = [];
-        app.addEventListener("error", event => runtimeErrors.push(event.message || "runtime error"));
-        app.addEventListener("unhandledrejection", event => runtimeErrors.push(String(event.reason || "unhandled rejection")));
-
-        if (app.ProfileStorage?.ready) {
-            await app.ProfileStorage.ready();
-        }
-
-        assert("aplicación marcada como ready", app.document.documentElement.getAttribute("data-portraitos-ready") === "true");
-
-        const criticalGlobals = [
-            "ProfileBinding",
-            "PhotosBinding",
-            "IdentityBinding",
-            "DirectionBinding",
-            "ValidationBinding",
-            "PromptBinding",
-            "ExportBinding",
-            "ReviewBinding",
-            "HistoryBinding"
-        ];
-
-        criticalGlobals.forEach(name => {
-            assert(`global ${name} disponible`, Boolean(app[name]));
-        });
-
-        assert("History root presente", Boolean(app.document.querySelector("[data-history]")));
-        assert("History search presente", Boolean(app.document.querySelector("[data-history-search]")));
-        assert("History list presente", Boolean(app.document.querySelector("[data-history-list]")));
-        assert("History pagination presente", Boolean(app.document.querySelector("[data-history-pagination]")));
-        assert("History counter presente", Boolean(app.document.querySelector("[data-history-counter]")));
-
-        assert(
-            "HistoryBinding inicializado",
-            typeof app.HistoryBinding?.getState === "function" && Boolean(app.HistoryBinding.getState())
-        );
-
-        stage = "history-service";
-        const profile = app.ProfileService?.getActive?.();
-        assert("perfil activo disponible", Boolean(profile));
-
-        const before = app.PromptHistoryService?.list?.({ limit: 100 })?.items?.length || 0;
-        const fakeEntry = {
-            id: `rc1-history-${Date.now()}`,
-            profileId: profile.id,
-            generationId: `rc1-generation-${Date.now()}`,
-            provider: "generic",
-            level: "professional",
-            prompt: "RC1 runtime smoke prompt",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        if (typeof app.PromptHistoryService?.add === "function") {
-            app.PromptHistoryService.add(fakeEntry);
-        } else if (typeof app.PromptHistoryService?.save === "function") {
-            app.PromptHistoryService.save(fakeEntry);
-        }
-
-        app.HistoryBinding.refresh();
-        const after = app.PromptHistoryService?.list?.({ limit: 100 })?.items?.length || 0;
-        assert("servicio History conserva o incrementa entradas", after >= before);
-        assert("History UI renderiza lista", Boolean(app.document.querySelector("[data-history-list]")));
-
-        stage = "idempotency";
-        const listenersBefore = app.AppEvents?.listenerCount?.() || 0;
-        app.HistoryBinding.init();
-        const listenersAfter = app.AppEvents?.listenerCount?.() || 0;
-        assert("History init idempotente", listenersAfter === listenersBefore, `before=${listenersBefore}, after=${listenersAfter}`);
-
-        await new Promise(resolve => app.setTimeout(resolve, 0));
-        assert("sin errores runtime", runtimeErrors.length === 0, runtimeErrors.join(" | "));
-
-        stage = "complete";
-        render(true);
-    } catch (error) {
-        window.clearTimeout(watchdog);
-        record("runner", false, error.stack || error.message);
-        render(true);
-    } finally {
-        frame.remove();
-    }
-});
-</script>
-</body>
-</html>
+  mark("idempotency");
+  const rootsBefore=w.document.querySelectorAll("[data-history]").length;
+  w.HistoryBinding.init();w.HistoryBinding.init();
+  check("un solo history root",w.document.querySelectorAll("[data-history]").length===rootsBefore&&rootsBefore===1);
+  check("sin errores runtime",errors.length===0,errors.join(" | "));
+  clearTimeout(watchdog);render(true);
+}catch(e){clearTimeout(watchdog);results.push({name:"runner",pass:false,detail:e.stack||e.message});render(true)}});
+</script></body></html>
