@@ -11,22 +11,39 @@ if (-not (Test-Path $path)) {
 
 $content = Get-Content -Path $path -Raw -Encoding UTF8
 
-$anchor = @'
+$firstAnchor = @'
+        expected = { profileAId: w.ProfileService.getActive().id, linkedPhotoId: primary.id };
+        stage = "reload-a"; w.location.reload();
+'@
+
+$firstReplacement = @'
+        expected = { profileAId: w.ProfileService.getActive().id, linkedPhotoId: primary.id };
+
+        /* Barrera durable del escenario A antes de destruir el runtime. */
+        w.ProfileManager.saveActive();
+        await w.ProfileStorage.flush();
+        const durableA = w.ProfileStorage.loadLibrary();
+        if (durableA?.activeProfileId !== expected.profileAId) {
+            throw new Error(
+                `persistencia A no confirmada antes de reload: active=${durableA?.activeProfileId} expected=${expected.profileAId}`
+            );
+        }
+
+        stage = "reload-a"; w.location.reload();
+'@
+
+$finalAnchor = @'
     record("adaptador sourcePhotoIds sincronizado", w.ProfileService.identity.getSection("face").sourcePhotoIds[0] === historicalPhotoId);
     expected.historicalId = historicalId; stage = "final-reload";
 '@
 
-$replacement = @'
+$finalReplacement = @'
     record("adaptador sourcePhotoIds sincronizado", w.ProfileService.identity.getSection("face").sourcePhotoIds[0] === historicalPhotoId);
 
     /*
-     * Barrera durable antes de recargar.
-     *
-     * ProfileStorage coalesce escrituras y puede tener un commit anterior
-     * todavía en curso. Recargar inmediatamente después de saveActive() hace
-     * que IndexedDB/fallback compitan con el estado más reciente en memoria.
-     * El runner debe validar el contrato durable real: guardar el perfil
-     * activo y esperar explícitamente a flush() antes de destruir el runtime.
+     * Barrera durable final.
+     * ProfileStorage coalesce escrituras: el runner debe esperar a que la
+     * biblioteca confirmada contenga el perfil histórico antes del reload.
      */
     w.ProfileManager.saveActive();
     await w.ProfileStorage.flush();
@@ -41,17 +58,30 @@ $replacement = @'
     expected.historicalId = historicalId; stage = "final-reload";
 '@
 
-if ($content.Contains($replacement)) {
-    Write-Host "La barrera durable de Sprint 2 ya estaba aplicada." -ForegroundColor Yellow
+$changed = $false
+
+if (-not $content.Contains("persistencia A no confirmada antes de reload")) {
+    if (-not $content.Contains($firstAnchor)) {
+        throw "No se encontró el reload inicial esperado de Sprint 2."
+    }
+    $content = $content.Replace($firstAnchor, $firstReplacement)
+    $changed = $true
+}
+
+if (-not $content.Contains("persistencia histórica no confirmada antes de reload")) {
+    if (-not $content.Contains($finalAnchor)) {
+        throw "No se encontró el reload final esperado de Sprint 2."
+    }
+    $content = $content.Replace($finalAnchor, $finalReplacement)
+    $changed = $true
+}
+
+if (-not $changed) {
+    Write-Host "Las dos barreras durables de Sprint 2 ya estaban aplicadas." -ForegroundColor Yellow
     exit 0
 }
 
-if (-not $content.Contains($anchor)) {
-    throw "No se encontró el bloque esperado del escenario histórico Sprint 2."
-}
-
-$content = $content.Replace($anchor, $replacement)
 Set-Content -Path $path -Value $content -Encoding UTF8 -NoNewline
 
-Write-Host "Sprint 2 actualizado: el reload final espera ProfileStorage.flush()." -ForegroundColor Green
+Write-Host "Sprint 2 actualizado: ambos reloads esperan ProfileStorage.flush()." -ForegroundColor Green
 Write-Host "No se ha modificado código de producción." -ForegroundColor Cyan
