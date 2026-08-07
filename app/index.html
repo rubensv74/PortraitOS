@@ -2772,8 +2772,10 @@
     <script src="js/bindings/review.binding.js"></script>
 
     <script src="js/services/release.metadata.js"></script>
+    <script src="js/services/demo.mode.service.js"></script>
     <script src="js/bindings/release.metadata.binding.js"></script>
     <script src="js/bindings/prompt.orientation.binding.js"></script>
+    <script src="js/bindings/demo.mode.binding.js"></script>
     <script src="js/wizard.js"></script>
     <script src="js/ui.js"></script>
 
@@ -2796,6 +2798,7 @@
                     ExportBinding.init({ autoPreview: false });
                     ReviewBinding.init();
                     PromptOrientationBinding.init();
+                    DemoModeBinding.init();
                     ReleaseMetadataBinding.init().catch(error => console.warn("PortraitOS: metadata RC1 no disponible.", error));
                     UI.init();
                 } catch (error) {

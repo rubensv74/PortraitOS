@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>PortraitOS Sprint 2 tests</title></head>
 <body><pre id="results" data-test-status="running">RUNNING</pre>
 <script>
@@ -166,6 +166,17 @@ async function run(frame) {
         record("Compiler conserva auditoría sin contaminar texto", compiled.metadata.identityEvidence.coverage === 90 && !compiled.prompt.includes(primary.id) && !compiled.prompt.includes(primary.checksum));
         record("sin excepciones escenario A", runtimeErrors.length === 0, runtimeErrors.join(" | "));
         expected = { profileAId: w.ProfileService.getActive().id, linkedPhotoId: primary.id };
+
+        /* Barrera durable del escenario A antes de destruir el runtime. */
+        w.ProfileManager.saveActive();
+        await w.ProfileStorage.flush();
+        const durableA = w.ProfileStorage.loadLibrary();
+        if (durableA?.activeProfileId !== expected.profileAId) {
+            throw new Error(
+                `persistencia A no confirmada antes de reload: active=${durableA?.activeProfileId} expected=${expected.profileAId}`
+            );
+        }
+
         stage = "reload-a"; w.location.reload();
     } catch (error) {
         results.push({ name: "runner", passed: false, detail: error.stack || error.message }); render(true);
@@ -211,6 +222,26 @@ async function runRemainingScenarios(w) {
     record("una vinculación produce un evento", evidenceEvents === 1, String(evidenceEvents));
     record("sin evidencia duplicada", w.ProfileService.identity.getEvidence("face").length === 1);
     record("adaptador sourcePhotoIds sincronizado", w.ProfileService.identity.getSection("face").sourcePhotoIds[0] === historicalPhotoId);
+
+    /*
+     * Barrera durable antes de recargar.
+     *
+     * ProfileStorage coalesce escrituras y puede tener un commit anterior
+     * todavÃ­a en curso. Recargar inmediatamente despuÃ©s de saveActive() hace
+     * que IndexedDB/fallback compitan con el estado mÃ¡s reciente en memoria.
+     * El runner debe validar el contrato durable real: guardar el perfil
+     * activo y esperar explÃ­citamente a flush() antes de destruir el runtime.
+     */
+    w.ProfileManager.saveActive();
+    await w.ProfileStorage.flush();
+
+    const durableLibrary = w.ProfileStorage.loadLibrary();
+    if (durableLibrary?.activeProfileId !== historicalId) {
+        throw new Error(
+            `persistencia histÃ³rica no confirmada antes de reload: active=${durableLibrary?.activeProfileId} expected=${historicalId}`
+        );
+    }
+
     expected.historicalId = historicalId; stage = "final-reload";
     const preReload = w.ProfileStorage?.loadLibrary?.() || {};
     window.__preReloadDiag = { libProfiles: (preReload.profiles || []).map(p => `${p.name}|${p.id}`).join(" // "), libActive: preReload.activeProfileId, idbActive: null, fallbackActive: null };

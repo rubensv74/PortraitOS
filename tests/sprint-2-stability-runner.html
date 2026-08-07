@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>PortraitOS Sprint 2 Stability Wrapper</title></head>
+<body>
+<pre id="out">RUNNING</pre>
+<iframe id="inner" src="./sprint-2-runner.html" hidden></iframe>
+<script>
+"use strict";
+(() => {
+    const out = document.getElementById("out");
+    const inner = document.getElementById("inner");
+    const startedAt = Date.now();
+    const timeoutMs = 90000;
+
+    async function postResult(payload) {
+        out.textContent = payload.text || payload.status;
+        try {
+            await fetch("/results", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+        } catch (_) {}
+    }
+
+    const timer = setInterval(async () => {
+        try {
+            const doc = inner.contentDocument;
+            const result = doc?.querySelector("#results");
+            const status = result?.dataset?.testStatus || "running";
+            const text = result?.textContent || "RUNNING";
+
+            if (status === "passed" || status === "failed") {
+                clearInterval(timer);
+                await postResult({ status, text, elapsedMs: Date.now() - startedAt });
+                return;
+            }
+
+            if (Date.now() - startedAt > timeoutMs) {
+                clearInterval(timer);
+                await postResult({
+                    status: "timeout",
+                    text: `${text}\nSTABILITY_WRAPPER_TIMEOUT`,
+                    elapsedMs: Date.now() - startedAt
+                });
+            }
+        } catch (error) {
+            clearInterval(timer);
+            await postResult({
+                status: "failed",
+                text: `STABILITY_WRAPPER_ERROR ${error?.stack || error?.message || String(error)}`,
+                elapsedMs: Date.now() - startedAt
+            });
+        }
+    }, 100);
+})();
+</script>
+</body>
+</html>

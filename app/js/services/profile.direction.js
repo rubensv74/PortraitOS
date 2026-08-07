@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 /* ============================================================
    PortraitOS
@@ -568,10 +568,17 @@ const ProfileDirection = (() => {
             );
         }
 
+        /*
+         * markUpdated() invalida un estado READY porque cualquier cambio
+         * posterior obliga a revisar de nuevo la direcciÃ³n. Durante la
+         * transiciÃ³n explÃ­cita a READY debemos actualizar timestamps antes
+         * de establecer el estado final; de lo contrario markReady() se
+         * autoinvalida y termina devolviendo DRAFT.
+         */
+        markUpdated(profile);
+
         direction.status =
             DIRECTION_STATUS.READY;
-
-        markUpdated(profile);
 
         return clone(direction);
     }
