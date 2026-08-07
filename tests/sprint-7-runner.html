@@ -58,6 +58,7 @@
     iframe.addEventListener("load", async () => {
         const win = iframe.contentWindow;
         const doc = iframe.contentDocument;
+        let reportedFailureStep = null;
         try {
             step = "app-ready";
             check(await waitFor(() => doc.documentElement.getAttribute("data-portraitos-ready") === "true"), "app ready");
@@ -101,22 +102,25 @@
 
             step = "demo-prepare";
             const progress = [];
+            let lastUsefulDemoStage = "demo-prepare";
             let demo;
             try {
                 demo = await win.DemoModeService.prepare({
                     onProgress: (stage, message) => {
-                        step = `demo-${stage}`;
                         progress.push(`${stage}:${message || ""}`);
+                        if (stage !== "error") {
+                            lastUsefulDemoStage = `demo-${stage}`;
+                            step = lastUsefulDemoStage;
+                        }
                     }
                 });
             } catch (error) {
-                const failureStage = step;
+                reportedFailureStep = lastUsefulDemoStage;
+                step = reportedFailureStep;
                 fail(
                     "demo prepare runtime exception",
-                    `${error?.code || error?.name || "ERROR"}: ${error?.message || String(error)} | stage=${failureStage} | progress=${progress.join(" > ")}`
+                    `${error?.code || error?.name || "ERROR"}: ${error?.message || String(error)} | stage=${reportedFailureStep} | progress=${progress.join(" > ")}`
                 );
-                step = failureStage;
-                error.__sprint7Reported = true;
                 throw error;
             }
             step = "demo-verify";
@@ -156,7 +160,9 @@
 
             step = "complete";
         } catch (error) {
-            if (!error?.__sprint7Reported) {
+            if (reportedFailureStep) {
+                step = reportedFailureStep;
+            } else {
                 fail("runtime exception", error?.stack || error?.message || String(error));
             }
         }
