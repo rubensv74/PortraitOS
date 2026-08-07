@@ -1,0 +1,85 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>PortraitOS RC1 runtime smoke</title></head><body><pre id="results" data-test-status="running">RUNNING</pre><script>
+"use strict";
+const out=document.getElementById("results"),results=[];let step="boot";
+function check(name,value,detail=""){results.push({name,pass:value===true,detail});render();if(!value)throw new Error(`${name}: ${detail}`)}
+function mark(value){step=value;out.dataset.step=value}
+function render(final=false){const pass=results.filter(x=>x.pass).length;out.textContent=results.map(x=>`${x.pass?"PASS":"FAIL"} ${x.name}${x.detail?` — ${x.detail}`:""}`).join("\n");if(final){out.dataset.testStatus=pass===results.length?"passed":"failed";out.textContent+=`\nSUMMARY ${pass}/${results.length}`;post()}}
+function post(){try{fetch("/results",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:out.dataset.testStatus,text:out.textContent,step})})}catch(_){}}
+const watchdog=setTimeout(()=>{results.push({name:"watchdog",pass:false,detail:`HANG_STEP=${step}`});render(true)},60000);
+const frame=document.createElement("iframe");frame.src="../app/index.html";document.body.append(frame);
+frame.addEventListener("load",async()=>{const w=frame.contentWindow;try{
+  mark("ready");
+  for(let i=0;i<100&&!w.document.documentElement.hasAttribute("data-portraitos-ready");i++)await new Promise(r=>setTimeout(r,50));
+  await w.ProfileStorage.ready();
+  if(w.ProfileManagerBinding?.ensureHistoryRuntime) await w.ProfileManagerBinding.ensureHistoryRuntime();
+  const errors=[];w.addEventListener("error",e=>errors.push(e.message));w.addEventListener("unhandledrejection",e=>errors.push(String(e.reason)));
+
+  check("app ready",w.document.documentElement.getAttribute("data-portraitos-ready")==="true");
+  check("HistoryBinding global",Boolean(w.HistoryBinding));
+  check("HistoryBinding initialized",w.HistoryBinding?.isInitialized?.()===true);
+  check("history runtime marker",w.document.documentElement.getAttribute("data-history-runtime-ready")==="true");
+  check("history root presente",Boolean(w.document.querySelector("[data-history]")));
+  ["search","provider","level","favorites","tags","list","pagination","empty","counter","diff"].forEach(name=>check(`selector ${name}`,Boolean(w.document.querySelector(`[data-history-${name}]`))));
+
+  mark("profile-a");
+  const profileA=w.ProfileService.getActive();
+  check("perfil A activo",Boolean(profileA?.id));
+  w.PromptHistoryService.clear({profileId:profileA.id});
+  const a1=w.PromptHistoryService.add({profileId:profileA.id,profileName:profileA.name,prompt:"RC1 prompt A uno",provider:"generic",level:"professional",title:"A uno",generationId:"rc1-gen-a1"},{skipDuplicate:false});
+  const a2=w.PromptHistoryService.add({profileId:profileA.id,profileName:profileA.name,prompt:"RC1 prompt A dos",provider:"openai",level:"contract",title:"A dos",generationId:"rc1-gen-a2",favorite:true,tags:["rc1"]},{skipDuplicate:false});
+  w.HistoryBinding.refresh();
+  check("history A muestra 2",w.HistoryBinding.getState().totalItems===2,JSON.stringify(w.HistoryBinding.getState()));
+  mark("profile-a-dom");
+  check("DOM A tiene 2 cards",w.document.querySelectorAll("[data-history-list] [data-id]").length===2,`cards=${w.document.querySelectorAll("[data-history-list] [data-id]").length}`);
+
+  mark("filters-provider");
+  w.HistoryBinding.setProvider("openai");check("filtro provider",w.HistoryBinding.getState().totalItems===1,JSON.stringify(w.HistoryBinding.getState()));
+  mark("filters-search");
+  w.HistoryBinding.clearFilters();w.HistoryBinding.setSearch("uno");check("busqueda",w.HistoryBinding.getState().totalItems===1,JSON.stringify(w.HistoryBinding.getState()));
+  mark("filters-tag");
+  w.HistoryBinding.clearFilters();w.HistoryBinding.setTag("rc1");check("filtro tag",w.HistoryBinding.getState().totalItems===1,JSON.stringify(w.HistoryBinding.getState()));w.HistoryBinding.clearFilters();
+
+  mark("restore");
+  const restored=w.HistoryBinding.restoreHistoryEntry(a1.id);
+  check("restore devuelve prompt",restored?.prompt==="RC1 prompt A uno",JSON.stringify(restored));
+  mark("restore-dom");
+  check("restore renderiza resultado",w.document.querySelector("[data-prompt-output]")?.textContent.includes("RC1 prompt A uno")===true,w.document.querySelector("[data-prompt-output]")?.textContent||"");
+
+  mark("compare");
+  const cards=w.document.querySelectorAll("[data-history-list] [data-id]");
+  cards[0]?.querySelector("[data-history-action='compare']")?.click();
+  cards[1]?.querySelector("[data-history-action='compare']")?.click();
+  check("comparacion visible",w.document.querySelector("[data-history-diff]")?.hidden===false,`hidden=${w.document.querySelector("[data-history-diff]")?.hidden}`);
+
+  mark("profile-b-create");
+  const profileB=w.ProfileManager.create({name:"RC1 Profile B"});
+  check("perfil B distinto",Boolean(profileB?.id)&&profileB.id!==profileA.id,`A=${profileA?.id} B=${profileB?.id}`);
+  check("perfil B realmente activo",w.ProfileManager.getState().activeProfileId===profileB.id,`active=${w.ProfileManager.getState().activeProfileId} B=${profileB.id}`);
+  mark("profile-b-history");
+  w.PromptHistoryService.clear({profileId:profileB.id});
+  w.PromptHistoryService.add({profileId:profileB.id,profileName:profileB.name,prompt:"RC1 prompt B",provider:"generic",level:"professional",title:"B uno",generationId:"rc1-gen-b1"},{skipDuplicate:false});
+  w.HistoryBinding.refresh();
+  check("aislamiento B muestra 1",w.HistoryBinding.getState().totalItems===1,JSON.stringify(w.HistoryBinding.getState()));
+  check("B no muestra A",!w.HistoryBinding.getHistory().some(x=>x.profileId===profileA.id),JSON.stringify(w.HistoryBinding.getHistory()));
+
+  mark("back-a");
+  w.ProfileManager.select(profileA.id);
+  w.HistoryBinding.refresh();
+  check("perfil A realmente activo",w.ProfileManager.getState().activeProfileId===profileA.id,`active=${w.ProfileManager.getState().activeProfileId} A=${profileA.id}`);
+  check("volver A muestra 2",w.HistoryBinding.getState().totalItems===2,JSON.stringify(w.HistoryBinding.getState()));
+  check("A no muestra B",!w.HistoryBinding.getHistory().some(x=>x.profileId===profileB.id),JSON.stringify(w.HistoryBinding.getHistory()));
+
+  mark("delete");
+  w.PromptHistoryService.remove(a2.id);w.HistoryBinding.refresh();
+  check("delete refresca UI",w.HistoryBinding.getState().totalItems===1,JSON.stringify(w.HistoryBinding.getState()));
+
+  mark("idempotency");
+  const rootsBefore=w.document.querySelectorAll("[data-history]").length;
+  w.HistoryBinding.init();w.HistoryBinding.init();
+  check("un solo history root",w.document.querySelectorAll("[data-history]").length===rootsBefore&&rootsBefore===1,`before=${rootsBefore} after=${w.document.querySelectorAll("[data-history]").length}`);
+  mark("runtime-errors");
+  check("sin errores runtime",errors.length===0,errors.join(" | "));
+  mark("complete");
+  clearTimeout(watchdog);render(true);
+}catch(e){clearTimeout(watchdog);results.push({name:"runner",pass:false,detail:`STEP=${step} ${e.stack||e.message}`});render(true)}});
+</script></body></html>
