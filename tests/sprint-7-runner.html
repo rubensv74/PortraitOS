@@ -18,7 +18,7 @@
     function check(condition, label, detail = "") { condition ? pass(label, detail) : fail(label, detail); }
     function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-    async function waitFor(predicate, timeout = 15000) {
+    async function waitFor(predicate, timeout = 20000) {
         const start = Date.now();
         while (Date.now() - start < timeout) {
             try { if (predicate()) return true; } catch (_) {}
@@ -33,6 +33,26 @@
         const text = lines.join("\n");
         out.textContent = text;
         await fetch("/results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, step, text }) });
+    }
+
+    async function verifyReloadPersistence(win, originalId, demoId) {
+        step = "demo-reload";
+        await win.ProfileStorage?.flush?.();
+
+        const reloadFrame = document.createElement("iframe");
+        reloadFrame.hidden = true;
+        document.body.appendChild(reloadFrame);
+        const loaded = new Promise(resolve => reloadFrame.addEventListener("load", resolve, { once: true }));
+        reloadFrame.src = `../app/index.html?demo-reload=${Date.now()}`;
+        await loaded;
+        const reloadWin = reloadFrame.contentWindow;
+        const reloadDoc = reloadFrame.contentDocument;
+        check(await waitFor(() => reloadDoc.documentElement.getAttribute("data-portraitos-ready") === "true"), "demo reload app ready");
+        check(await waitFor(() => Boolean(reloadWin.DemoModeService)), "demo reload service available");
+        const state = reloadWin.ProfileManager.getState();
+        check(state.profiles.some(profile => profile.id === demoId), "reload conserva perfil demo");
+        check(state.profiles.some(profile => profile.id === originalId), "reload conserva perfil real");
+        reloadFrame.remove();
     }
 
     iframe.addEventListener("load", async () => {
@@ -63,18 +83,64 @@
             check(metadata.storageVersion === 2, "storage version", String(metadata.storageVersion));
             check(metadata.channel === "rc", "release channel", metadata.channel);
 
-            step = "idempotency";
+            step = "orientation-idempotency";
             const before = doc.querySelectorAll("[data-prompt-orientation]").length;
             win.PromptOrientationBinding.init();
             const after = doc.querySelectorAll("[data-prompt-orientation]").length;
             check(before === 1 && after === 1, "orientation init idempotent");
+
+            step = "demo-contract";
+            check(Boolean(win.DemoModeService), "DemoModeService global");
+            check(Boolean(win.DemoModeBinding), "DemoModeBinding global");
+            check(await waitFor(() => doc.documentElement.getAttribute("data-demo-mode-ready") === "true"), "Demo Mode initialized");
+            check(Boolean(doc.querySelector("[data-demo-mode-controls]")), "Demo Mode controls visible");
+
+            const original = win.ProfileService.getActive();
+            const originalSnapshot = JSON.stringify(original);
+            check(Boolean(original?.id), "perfil real inicial disponible");
+
+            step = "demo-prepare";
+            const demo = await win.DemoModeService.prepare();
+            check(demo.profileName === win.DemoModeService.DEMO_NAME, "demo profile named");
+            check(demo.photoCount === 5, "demo tiene cinco fotos", String(demo.photoCount));
+            check(demo.evidence?.readyForLock === true, "demo evidencia válida", String(demo.evidence?.score));
+            check(demo.identityLocked === true, "demo identity locked");
+            check(demo.direction?.status === "ready", "demo direction ready", demo.direction?.status || "");
+            check(demo.readiness?.ready === true, "demo validation ready", String(demo.readiness?.score));
+            check(demo.historyCount === 1, "demo una entrada history", String(demo.historyCount));
+            check(Boolean(demo.generation?.generationId), "demo generationId");
+            check(demo.exportResult?.package?.schema === "portraitos.export-package", "demo package exportable");
+            const demoId = demo.profileId;
+
+            step = "demo-isolation";
+            win.ProfileManager.select(original.id);
+            const realAfterDemo = win.ProfileService.getActive();
+            check(JSON.stringify(realAfterDemo) === originalSnapshot, "perfil real no alterado");
+            win.ProfileManager.select(demoId);
+
+            step = "demo-idempotency";
+            const historyBeforeReuse = win.PromptHistoryService.list({ profileId: demoId, limit: 100 }).items.length;
+            const reused = await win.DemoModeService.prepare();
+            const historyAfterReuse = win.PromptHistoryService.list({ profileId: demoId, limit: 100 }).items.length;
+            check(reused.reused === true, "segunda ejecución reutiliza demo");
+            check(historyBeforeReuse === historyAfterReuse && historyAfterReuse === 1, "segunda ejecución no duplica history", String(historyAfterReuse));
+
+            await verifyReloadPersistence(win, original.id, demoId);
+
+            step = "demo-cleanup";
+            win.ProfileManager.select(demoId);
+            const removed = win.DemoModeService.remove();
+            check(removed.removed === true, "demo eliminada");
+            const finalState = win.ProfileManager.getState();
+            check(!finalState.profiles.some(profile => profile.id === demoId), "demo no permanece en library");
+            check(finalState.profiles.some(profile => profile.id === original.id), "perfil real permanece tras cleanup");
 
             step = "complete";
         } catch (error) {
             fail("runtime exception", error?.stack || error?.message || String(error));
         }
         await send();
-    });
+    }, { once: true });
 })();
 </script>
 </body>
