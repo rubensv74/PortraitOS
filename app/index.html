@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -53,6 +53,10 @@
     <link
         rel="stylesheet"
         href="css/design-system.css"
+    >
+    <link
+        rel="stylesheet"
+        href="css/rc1-polish.css"
     >
 </head>
 
@@ -276,9 +280,10 @@
 
             <footer class="app-sidebar__footer">
 
-                <span>
-                    PortraitOS v1.0
-                </span>
+                <div class="release-meta" aria-label="InformaciÃ³n de versiÃ³n">
+                    <span class="release-meta__version" data-release-version>PortraitOS RC1</span>
+                    <small class="release-meta__details" data-release-details>Build local</small>
+                </div>
 
                 <small>
                     Identity remains constant
@@ -2766,6 +2771,9 @@
     <script src="js/bindings/export.binding.js"></script>
     <script src="js/bindings/review.binding.js"></script>
 
+    <script src="js/services/release.metadata.js"></script>
+    <script src="js/bindings/release.metadata.binding.js"></script>
+    <script src="js/bindings/prompt.orientation.binding.js"></script>
     <script src="js/wizard.js"></script>
     <script src="js/ui.js"></script>
 
@@ -2787,6 +2795,8 @@
                     PromptBinding.init();
                     ExportBinding.init({ autoPreview: false });
                     ReviewBinding.init();
+                    PromptOrientationBinding.init();
+                    ReleaseMetadataBinding.init().catch(error => console.warn("PortraitOS: metadata RC1 no disponible.", error));
                     UI.init();
                 } catch (error) {
                     console.error(
