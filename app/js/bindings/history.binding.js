@@ -6,7 +6,7 @@
    ============================================================ */
 
 const HistoryBinding = (() => {
-    const VERSION = "1.1.0";
+    const VERSION = "1.1.1";
     const EVENTS = Object.freeze({
         INITIALIZED: "portraitos:history-binding:initialized",
         CHANGED: "portraitos:history-binding:changed",
@@ -37,18 +37,9 @@ const HistoryBinding = (() => {
 
     function createState() {
         return {
-            search: "",
-            provider: "",
-            level: "",
-            tag: "",
-            onlyFavorites: false,
-            page: 1,
-            pageSize: 20,
-            totalPages: 1,
-            totalItems: 0,
-            selected: new Set(),
-            history: [],
-            filtered: []
+            search: "", provider: "", level: "", tag: "", onlyFavorites: false,
+            page: 1, pageSize: 20, totalPages: 1, totalItems: 0,
+            selected: new Set(), history: [], filtered: []
         };
     }
 
@@ -70,9 +61,7 @@ const HistoryBinding = (() => {
     }
 
     function destroy() {
-        listeners.forEach(off => {
-            try { off(); } catch (_) { /* no-op */ }
-        });
+        listeners.forEach(off => { try { off(); } catch (_) { /* no-op */ } });
         listeners = [];
         if (root) delete root.dataset.historyInitialized;
         root = null;
@@ -87,76 +76,28 @@ const HistoryBinding = (() => {
     function ensureRoot(scope) {
         const existing = scope.querySelector?.(SELECTORS.root) || document.querySelector(SELECTORS.root);
         if (existing) return existing;
-
         const promptPanel = document.querySelector("[data-step-panel='prompt']");
         if (!promptPanel) throw new Error("No existe el panel de Generación para integrar History.");
-
         const section = document.createElement("section");
         section.className = "history-studio";
         section.dataset.history = "";
         section.setAttribute("aria-labelledby", "history-studio-title");
         section.innerHTML = `
             <div class="panel-heading history-studio__heading">
-                <div>
-                    <span class="panel-heading__eyebrow">History Studio</span>
-                    <h2 id="history-studio-title">Historial de generaciones</h2>
-                    <p>Consulta, filtra, compara y restaura Portrait Contracts del perfil activo.</p>
-                </div>
+                <div><span class="panel-heading__eyebrow">History Studio</span><h2 id="history-studio-title">Historial de generaciones</h2><p>Consulta, filtra, compara y restaura Portrait Contracts del perfil activo.</p></div>
                 <span class="status-badge" data-history-counter>0 generaciones</span>
             </div>
-            <article class="card history-studio__controls">
-                <div class="card__body">
-                    <div class="form-grid">
-                        <div class="form-field form-field--full">
-                            <label for="history-search">Buscar</label>
-                            <input id="history-search" type="search" data-history-search placeholder="Título, notas o proveedor" autocomplete="off">
-                        </div>
-                        <div class="form-field">
-                            <label for="history-provider">Proveedor</label>
-                            <select id="history-provider" data-history-provider>
-                                <option value="">Todos</option>
-                                <option value="generic">Genérico</option>
-                                <option value="openai">OpenAI</option>
-                                <option value="gpt-image">GPT Image</option>
-                                <option value="midjourney">Midjourney</option>
-                                <option value="flux">Flux</option>
-                                <option value="stable-diffusion">Stable Diffusion</option>
-                                <option value="ideogram">Ideogram</option>
-                                <option value="firefly">Adobe Firefly</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label for="history-level">Nivel</label>
-                            <select id="history-level" data-history-level>
-                                <option value="">Todos</option>
-                                <option value="short">Breve</option>
-                                <option value="standard">Estándar</option>
-                                <option value="professional">Profesional</option>
-                                <option value="contract">Contrato</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label for="history-tag">Etiqueta</label>
-                            <select id="history-tag" data-history-tags><option value="">Todas</option></select>
-                        </div>
-                        <div class="form-field">
-                            <label class="checkbox-row">
-                                <input type="checkbox" data-history-favorites>
-                                <span>Solo favoritos</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </article>
-            <div class="empty-state" data-history-empty>
-                <strong>No hay generaciones para este perfil.</strong>
-                <span>Genera un Portrait Contract y aparecerá aquí.</span>
-            </div>
+            <article class="card history-studio__controls"><div class="card__body"><div class="form-grid">
+                <div class="form-field form-field--full"><label for="history-search">Buscar</label><input id="history-search" type="search" data-history-search placeholder="Título, notas o proveedor" autocomplete="off"></div>
+                <div class="form-field"><label for="history-provider">Proveedor</label><select id="history-provider" data-history-provider><option value="">Todos</option><option value="generic">Genérico</option><option value="openai">OpenAI</option><option value="gpt-image">GPT Image</option><option value="midjourney">Midjourney</option><option value="flux">Flux</option><option value="stable-diffusion">Stable Diffusion</option><option value="ideogram">Ideogram</option><option value="firefly">Adobe Firefly</option></select></div>
+                <div class="form-field"><label for="history-level">Nivel</label><select id="history-level" data-history-level><option value="">Todos</option><option value="short">Breve</option><option value="standard">Estándar</option><option value="professional">Profesional</option><option value="contract">Contrato</option></select></div>
+                <div class="form-field"><label for="history-tag">Etiqueta</label><select id="history-tag" data-history-tags><option value="">Todas</option></select></div>
+                <div class="form-field"><label class="checkbox-row"><input type="checkbox" data-history-favorites><span>Solo favoritos</span></label></div>
+            </div></div></article>
+            <div class="empty-state" data-history-empty><strong>No hay generaciones para este perfil.</strong><span>Genera un Portrait Contract y aparecerá aquí.</span></div>
             <div class="history-studio__list" data-history-list aria-live="polite"></div>
             <nav class="history-studio__pagination" data-history-pagination aria-label="Paginación del historial"></nav>
-            <article class="card history-studio__diff" data-history-diff hidden></article>
-        `;
-
+            <article class="card history-studio__diff" data-history-diff hidden></article>`;
         const exportStudio = promptPanel.querySelector("[data-export-binding]");
         if (exportStudio) exportStudio.insertAdjacentElement("beforebegin", section);
         else promptPanel.appendChild(section);
@@ -169,30 +110,16 @@ const HistoryBinding = (() => {
         const level = root.querySelector(SELECTORS.level);
         const favorites = root.querySelector(SELECTORS.favorites);
         const tags = root.querySelector(SELECTORS.tags);
-
-        const onSearch = event => {
-            state.search = event.target.value || "";
-            state.page = 1;
-            applyFilters();
-            render();
-            emit(EVENTS.SEARCH_CHANGED, state.search);
-        };
+        const onSearch = event => { state.search = event.target.value || ""; state.page = 1; applyFilters(); render(); emit(EVENTS.SEARCH_CHANGED, state.search); };
         const onProvider = event => setProvider(event.target.value);
         const onLevel = event => setLevel(event.target.value);
-        const onFavorites = event => {
-            state.onlyFavorites = Boolean(event.target.checked);
-            state.page = 1;
-            applyFilters();
-            render();
-        };
+        const onFavorites = event => { state.onlyFavorites = Boolean(event.target.checked); state.page = 1; applyFilters(); render(); };
         const onTag = event => setTag(event.target.value);
-
         search?.addEventListener("input", onSearch);
         provider?.addEventListener("change", onProvider);
         level?.addEventListener("change", onLevel);
         favorites?.addEventListener("change", onFavorites);
         tags?.addEventListener("change", onTag);
-
         listeners.push(() => search?.removeEventListener("input", onSearch));
         listeners.push(() => provider?.removeEventListener("change", onProvider));
         listeners.push(() => level?.removeEventListener("change", onLevel));
@@ -207,14 +134,9 @@ const HistoryBinding = (() => {
             window.addEventListener(changedEvent, handler);
             listeners.push(() => window.removeEventListener(changedEvent, handler));
         }
-
         if (window.AppEvents?.on) {
             ["profile-manager:changed", "profile:loaded"].forEach(name => {
-                const off = window.AppEvents.on(name, () => {
-                    clearSelection();
-                    state.page = 1;
-                    refresh();
-                });
+                const off = window.AppEvents.on(name, () => { state.selected.clear(); state.page = 1; refresh(); });
                 if (typeof off === "function") listeners.push(off);
             });
         }
@@ -224,24 +146,12 @@ const HistoryBinding = (() => {
         return window.ProfileService?.getActive?.()?.id || window.ProfileManager?.getState?.()?.activeProfileId || null;
     }
 
-    function refresh() {
-        loadHistory();
-        populateTags();
-        applyFilters();
-        render();
-        return getState();
-    }
+    function refresh() { loadHistory(); populateTags(); applyFilters(); render(); return getState(); }
 
     function loadHistory() {
         const profileId = getActiveProfileId();
-        if (!profileId) {
-            state.history = [];
-            return;
-        }
-        const result = window.PromptHistoryService.list({
-            profileId,
-            limit: Number.MAX_SAFE_INTEGER
-        });
+        if (!profileId) { state.history = []; return; }
+        const result = window.PromptHistoryService.list({ profileId, limit: Number.MAX_SAFE_INTEGER });
         state.history = clone(result.items || []);
     }
 
@@ -258,10 +168,7 @@ const HistoryBinding = (() => {
     function applyFilters() {
         let items = [...state.history];
         const search = state.search.trim().toLowerCase();
-        if (search) {
-            items = items.filter(item => [item.title, item.notes, item.provider, item.prompt]
-                .some(value => String(value || "").toLowerCase().includes(search)));
-        }
+        if (search) items = items.filter(item => [item.title, item.notes, item.provider, item.prompt].some(value => String(value || "").toLowerCase().includes(search)));
         if (state.provider) items = items.filter(item => item.provider === state.provider);
         if (state.level) items = items.filter(item => item.level === state.level);
         if (state.onlyFavorites) items = items.filter(item => item.favorite === true);
@@ -279,10 +186,7 @@ const HistoryBinding = (() => {
         const pagination = root?.querySelector(SELECTORS.pagination);
         if (counter) counter.textContent = `${state.totalItems} ${state.totalItems === 1 ? "generación" : "generaciones"}`;
         if (empty) empty.hidden = state.totalItems !== 0;
-        if (list) {
-            list.innerHTML = "";
-            currentPageItems().forEach(item => list.appendChild(createCard(item)));
-        }
+        if (list) { list.innerHTML = ""; currentPageItems().forEach(item => list.appendChild(createCard(item))); }
         renderPagination(pagination);
         emit(EVENTS.CHANGED, { total: state.totalItems, page: state.page, profileId: getActiveProfileId() });
     }
@@ -298,25 +202,9 @@ const HistoryBinding = (() => {
         article.dataset.id = item.id;
         if (state.selected.has(item.id)) article.classList.add("selected");
         article.innerHTML = `
-            <header class="card__header history-card-header">
-                <div class="history-card-title">
-                    <h3>${escapeHtml(item.title || `Versión ${item.version || ""}`)}</h3>
-                    <small>${escapeHtml(buildMetadata(item))}</small>
-                </div>
-                <button type="button" class="button button--tertiary" data-history-action="favorite" title="Favorito">${item.favorite ? "★" : "☆"}</button>
-            </header>
-            <div class="card__body">
-                <p class="history-preview">${escapeHtml(truncate(item.prompt || "", 300))}</p>
-                <div class="history-tags">${(item.tags || []).map(tag => `<button type="button" class="history-tag" data-history-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}</div>
-            </div>
-            <footer class="card__footer history-footer">
-                <button type="button" class="button button--secondary" data-history-action="restore">Restaurar</button>
-                <button type="button" class="button button--secondary" data-history-action="compare">Comparar</button>
-                <button type="button" class="button button--secondary" data-history-action="duplicate">Duplicar</button>
-                <button type="button" class="button button--secondary" data-history-action="export">Exportar</button>
-                <button type="button" class="button button--tertiary" data-history-action="delete">Eliminar</button>
-            </footer>`;
-
+            <header class="card__header history-card-header"><div class="history-card-title"><h3>${escapeHtml(item.title || `Versión ${item.version || ""}`)}</h3><small>${escapeHtml(buildMetadata(item))}</small></div><button type="button" class="button button--tertiary" data-history-action="favorite" title="Favorito">${item.favorite ? "★" : "☆"}</button></header>
+            <div class="card__body"><p class="history-preview">${escapeHtml(truncate(item.prompt || "", 300))}</p><div class="history-tags">${(item.tags || []).map(tag => `<button type="button" class="history-tag" data-history-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}</div></div>
+            <footer class="card__footer history-footer"><button type="button" class="button button--secondary" data-history-action="restore">Restaurar</button><button type="button" class="button button--secondary" data-history-action="compare">Comparar</button><button type="button" class="button button--secondary" data-history-action="duplicate">Duplicar</button><button type="button" class="button button--secondary" data-history-action="export">Exportar</button><button type="button" class="button button--tertiary" data-history-action="delete">Eliminar</button></footer>`;
         article.addEventListener("click", event => {
             const tagButton = event.target.closest("[data-history-tag]");
             if (tagButton) return setTag(tagButton.dataset.historyTag || "");
@@ -365,18 +253,40 @@ const HistoryBinding = (() => {
     }
 
     function restoreHistoryEntry(id) {
-        if (!window.PromptBinding?.restoreHistoryEntry) return null;
-        const result = window.PromptBinding.restoreHistoryEntry(id);
-        emit(EVENTS.RESTORED, { id, profileId: getActiveProfileId() });
-        return result;
+        const entry = window.PromptHistoryService.getById(id);
+        if (!entry || entry.profileId !== getActiveProfileId()) return null;
+        const restored = window.PromptHistoryService.restore(id);
+        renderRestoredResult(entry, restored);
+        emit(EVENTS.RESTORED, { id, profileId: entry.profileId, restored: clone(restored) });
+        return restored;
+    }
+
+    function renderRestoredResult(entry, restored) {
+        const output = document.querySelector("[data-prompt-output]");
+        if (!output || !restored) return;
+        output.innerHTML = "";
+        const wrapper = document.createElement("article");
+        wrapper.className = "history-restored-result";
+        const title = document.createElement("h3");
+        title.textContent = `Versión restaurada · ${entry.title || `v${entry.version || ""}`}`;
+        const prompt = document.createElement("pre");
+        prompt.className = "prompt-result__text";
+        prompt.textContent = restored.prompt || "";
+        wrapper.append(title, prompt);
+        if (restored.negativePrompt) {
+            const negativeTitle = document.createElement("h4");
+            negativeTitle.textContent = "Prompt negativo";
+            const negative = document.createElement("pre");
+            negative.className = "prompt-result__text";
+            negative.textContent = restored.negativePrompt;
+            wrapper.append(negativeTitle, negative);
+        }
+        output.appendChild(wrapper);
     }
 
     function toggleSelection(id) {
         if (state.selected.has(id)) state.selected.delete(id);
-        else {
-            if (state.selected.size >= 2) state.selected.delete(state.selected.values().next().value);
-            state.selected.add(id);
-        }
+        else { if (state.selected.size >= 2) state.selected.delete(state.selected.values().next().value); state.selected.add(id); }
         render();
         if (state.selected.size === 2) compareSelection();
     }
@@ -400,15 +310,10 @@ const HistoryBinding = (() => {
         viewer.innerHTML = `<header class="card__header"><div><h3>Comparación de versiones</h3></div></header><div class="card__body"><strong>${Number(diff?.statistics?.similarity || 0)}% similitud</strong><pre class="history-diff">${escapeHtml(diff?.diffText || diff?.diff || "")}</pre></div>`;
     }
 
-    function exportEntry(entry) {
-        window.PromptExportService?.exportHistoryEntry?.(entry, { format: "json", download: true });
-    }
-
+    function exportEntry(entry) { return window.PromptExportService?.exportHistoryEntry?.(entry, { format: "json", download: true }); }
     function exportSelection() {
         const profileId = getActiveProfileId();
-        const entries = [...state.selected]
-            .map(id => window.PromptHistoryService.getById(id))
-            .filter(entry => entry && entry.profileId === profileId);
+        const entries = [...state.selected].map(id => window.PromptHistoryService.getById(id)).filter(entry => entry && entry.profileId === profileId);
         return window.PromptExportService?.exportHistory?.(entries, { format: "json", download: true });
     }
 
@@ -432,29 +337,9 @@ const HistoryBinding = (() => {
         return result;
     }
 
-    function addTag(id, tag) {
-        const entry = window.PromptHistoryService.getById(id);
-        if (!entry || entry.profileId !== getActiveProfileId()) return null;
-        const result = window.PromptHistoryService.addTag(id, tag);
-        refresh();
-        return result;
-    }
-
-    function removeTag(id, tag) {
-        const entry = window.PromptHistoryService.getById(id);
-        if (!entry || entry.profileId !== getActiveProfileId()) return null;
-        const result = window.PromptHistoryService.removeTag(id, tag);
-        refresh();
-        return result;
-    }
-
-    function updateNotes(id, notes) {
-        const entry = window.PromptHistoryService.getById(id);
-        if (!entry || entry.profileId !== getActiveProfileId()) return null;
-        const result = window.PromptHistoryService.setNotes(id, notes);
-        refresh();
-        return result;
-    }
+    function addTag(id, tag) { const entry = window.PromptHistoryService.getById(id); if (!entry || entry.profileId !== getActiveProfileId()) return null; const result = window.PromptHistoryService.addTag(id, tag); refresh(); return result; }
+    function removeTag(id, tag) { const entry = window.PromptHistoryService.getById(id); if (!entry || entry.profileId !== getActiveProfileId()) return null; const result = window.PromptHistoryService.removeTag(id, tag); refresh(); return result; }
+    function updateNotes(id, notes) { const entry = window.PromptHistoryService.getById(id); if (!entry || entry.profileId !== getActiveProfileId()) return null; const result = window.PromptHistoryService.setNotes(id, notes); refresh(); return result; }
 
     function setSearch(value) { state.search = String(value || ""); syncControl(SELECTORS.search, state.search); state.page = 1; applyFilters(); render(); }
     function setProvider(value) { state.provider = String(value || ""); syncControl(SELECTORS.provider, state.provider); state.page = 1; applyFilters(); render(); }
@@ -463,20 +348,10 @@ const HistoryBinding = (() => {
     function syncControl(selector, value) { const element = root?.querySelector(selector); if (element) element.value = value; }
 
     function clearFilters() {
-        state.search = "";
-        state.provider = "";
-        state.level = "";
-        state.tag = "";
-        state.onlyFavorites = false;
-        state.page = 1;
-        syncControl(SELECTORS.search, "");
-        syncControl(SELECTORS.provider, "");
-        syncControl(SELECTORS.level, "");
-        syncControl(SELECTORS.tags, "");
-        const favorite = root?.querySelector(SELECTORS.favorites);
-        if (favorite) favorite.checked = false;
-        applyFilters();
-        render();
+        state.search = ""; state.provider = ""; state.level = ""; state.tag = ""; state.onlyFavorites = false; state.page = 1;
+        syncControl(SELECTORS.search, ""); syncControl(SELECTORS.provider, ""); syncControl(SELECTORS.level, ""); syncControl(SELECTORS.tags, "");
+        const favorite = root?.querySelector(SELECTORS.favorites); if (favorite) favorite.checked = false;
+        applyFilters(); render();
     }
 
     function nextPage() { if (state.page < state.totalPages) { state.page += 1; render(); } }
@@ -485,45 +360,20 @@ const HistoryBinding = (() => {
     function clearSelection() { state.selected.clear(); render(); }
     function reset() { state = createState(); if (initialized) refresh(); }
 
-    function getState() {
-        return {
-            initialized,
-            profileId: getActiveProfileId(),
-            search: state.search,
-            provider: state.provider,
-            level: state.level,
-            tag: state.tag,
-            onlyFavorites: state.onlyFavorites,
-            page: state.page,
-            pageSize: state.pageSize,
-            totalPages: state.totalPages,
-            totalItems: state.totalItems,
-            selected: [...state.selected]
-        };
-    }
-
+    function getState() { return { initialized, profileId: getActiveProfileId(), search: state.search, provider: state.provider, level: state.level, tag: state.tag, onlyFavorites: state.onlyFavorites, page: state.page, pageSize: state.pageSize, totalPages: state.totalPages, totalItems: state.totalItems, selected: [...state.selected] }; }
     function getHistory() { return clone(state.history); }
     function getFilteredHistory() { return clone(state.filtered); }
     function getSelection() { return [...state.selected]; }
     function isInitialized() { return initialized; }
 
-    function buildMetadata(item) {
-        return [item.provider, item.level, item.createdAt ? new Date(item.createdAt).toLocaleString("es-ES") : ""].filter(Boolean).join(" • ");
-    }
+    function buildMetadata(item) { return [item.provider, item.level, item.createdAt ? new Date(item.createdAt).toLocaleString("es-ES") : ""].filter(Boolean).join(" • "); }
     function truncate(value, length) { const text = String(value || ""); return text.length > length ? `${text.slice(0, length)}…` : text; }
     function clone(value) { return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
     function escapeHtml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
     function emit(name, detail) { window.dispatchEvent(new CustomEvent(name, { detail })); }
 
     function api() {
-        return Object.freeze({
-            VERSION, EVENTS, init, destroy, isInitialized, refresh, reset,
-            getState, getHistory, getFilteredHistory, getSelection,
-            setSearch, setProvider, setLevel, setTag, clearFilters,
-            nextPage, previousPage, goToPage, compareSelection,
-            restoreHistoryEntry, exportSelection, clearSelection,
-            renameEntry, addTag, removeTag, updateNotes, duplicateEntry
-        });
+        return Object.freeze({ VERSION, EVENTS, init, destroy, isInitialized, refresh, reset, getState, getHistory, getFilteredHistory, getSelection, setSearch, setProvider, setLevel, setTag, clearFilters, nextPage, previousPage, goToPage, compareSelection, restoreHistoryEntry, exportSelection, clearSelection, renameEntry, addTag, removeTag, updateNotes, duplicateEntry });
     }
 
     return api();
