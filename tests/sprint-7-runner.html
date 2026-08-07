@@ -100,7 +100,23 @@
             check(Boolean(original?.id), "perfil real inicial disponible");
 
             step = "demo-prepare";
-            const demo = await win.DemoModeService.prepare();
+            const progress = [];
+            let demo;
+            try {
+                demo = await win.DemoModeService.prepare({
+                    onProgress: (stage, message) => {
+                        step = `demo-${stage}`;
+                        progress.push(`${stage}:${message || ""}`);
+                    }
+                });
+            } catch (error) {
+                fail(
+                    "demo prepare runtime exception",
+                    `${error?.code || error?.name || "ERROR"}: ${error?.message || String(error)} | progress=${progress.join(" > ")}`
+                );
+                throw error;
+            }
+            step = "demo-verify";
             check(demo.profileName === win.DemoModeService.DEMO_NAME, "demo profile named");
             check(demo.photoCount === 5, "demo tiene cinco fotos", String(demo.photoCount));
             check(demo.evidence?.readyForLock === true, "demo evidencia válida", String(demo.evidence?.score));
