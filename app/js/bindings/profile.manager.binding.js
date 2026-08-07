@@ -4,9 +4,13 @@ const ProfileManagerBinding = (() => {
     let initialized = false;
     let root = document;
     let subscriptions = [];
+    let historyRuntimePromise = null;
 
     function init(options = {}) {
-        if (initialized) return ProfileManager.getState();
+        if (initialized) {
+            ensureHistoryRuntime().catch(reportHistoryRuntimeError);
+            return ProfileManager.getState();
+        }
         root = options.root || document;
         validateDependencies();
         root.addEventListener("click", handleClick);
@@ -19,7 +23,65 @@ const ProfileManagerBinding = (() => {
         const state = ProfileManager.init();
         render();
         initialized = true;
+        ensureHistoryRuntime().catch(reportHistoryRuntimeError);
         return state;
+    }
+
+    function ensureHistoryRuntime() {
+        if (window.HistoryBinding) {
+            window.HistoryBinding.init();
+            return Promise.resolve(window.HistoryBinding);
+        }
+        if (historyRuntimePromise) return historyRuntimePromise;
+
+        historyRuntimePromise = new Promise((resolve, reject) => {
+            const existing = document.querySelector("script[data-portraitos-history-binding]");
+            if (existing) {
+                const finish = () => {
+                    if (!window.HistoryBinding) return reject(new Error("HistoryBinding no quedó disponible tras cargar el script."));
+                    window.HistoryBinding.init();
+                    resolve(window.HistoryBinding);
+                };
+                if (existing.dataset.loaded === "true") finish();
+                else {
+                    existing.addEventListener("load", finish, { once: true });
+                    existing.addEventListener("error", () => reject(new Error("No se pudo cargar HistoryBinding.")), { once: true });
+                }
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "js/bindings/history.binding.js";
+            script.async = false;
+            script.dataset.portraitosHistoryBinding = "";
+            script.addEventListener("load", () => {
+                script.dataset.loaded = "true";
+                try {
+                    if (!window.HistoryBinding) throw new Error("HistoryBinding no expuso su API global.");
+                    window.HistoryBinding.init();
+                    document.documentElement.setAttribute("data-history-runtime-ready", "true");
+                    resolve(window.HistoryBinding);
+                } catch (error) {
+                    reject(error);
+                }
+            }, { once: true });
+            script.addEventListener("error", () => reject(new Error("No se pudo cargar js/bindings/history.binding.js.")), { once: true });
+            document.head.appendChild(script);
+        }).catch(error => {
+            historyRuntimePromise = null;
+            throw error;
+        });
+
+        return historyRuntimePromise;
+    }
+
+    function reportHistoryRuntimeError(error) {
+        console.error("PortraitOS: History runtime no pudo inicializarse.", error);
+        window.AppEvents?.emit?.("app:error", {
+            code: "HISTORY_RUNTIME_FAILED",
+            message: "No se pudo inicializar el historial de generaciones.",
+            error
+        });
     }
 
     function handleChange(event) {
@@ -52,6 +114,7 @@ const ProfileManagerBinding = (() => {
         try {
             operation();
             render();
+            window.HistoryBinding?.refresh?.();
             window.UI?.notify?.(message, { type: "success" });
         } catch (error) {
             window.UI?.notify?.(error.message, { type: "error", title: "Profile Manager" });
@@ -77,7 +140,7 @@ const ProfileManagerBinding = (() => {
     }
     function escapeHtml(value) { return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
 
-    return Object.freeze({ init, render });
+    return Object.freeze({ init, render, ensureHistoryRuntime });
 })();
 
 window.ProfileManagerBinding = ProfileManagerBinding;
