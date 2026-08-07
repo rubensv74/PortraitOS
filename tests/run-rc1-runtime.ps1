@@ -109,6 +109,7 @@ $server = Start-Process powershell.exe -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput $serverLog `
     -RedirectStandardError $serverError
 
+$browserProcess = $null
 try {
     Start-Sleep -Milliseconds 800
 
@@ -118,13 +119,14 @@ try {
     }
 
     $url = "http://127.0.0.1:$Port/tests/rc1-runtime-runner.html"
+    $profilePath = Join-Path $env:TEMP ("portraitos-rc1-runtime-profile-" + [guid]::NewGuid().ToString("N"))
     $browserProcess = Start-Process $browser -PassThru -WindowStyle Hidden -ArgumentList @(
         "--headless=new",
         "--disable-gpu",
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-background-networking",
-        "--user-data-dir=$env:TEMP\portraitos-rc1-runtime-profile-$PID",
+        "--user-data-dir=$profilePath",
         $url
     )
 
@@ -140,8 +142,14 @@ try {
     $result = Get-Content $resultsFile -Raw | ConvertFrom-Json
     Write-Host $result.text
 
+    $reportedStage = $result.step
+    if (-not $reportedStage) { $reportedStage = $result.stage }
+    if (-not $reportedStage) { $reportedStage = "unknown" }
+    Write-Host "STEP=$reportedStage"
+    Write-Host "TEST_STATUS=$($result.status)"
+
     if ($result.status -ne "passed") {
-        throw "RC1_RUNTIME_BLOCKED (stage=$($result.stage))"
+        throw "RC1_RUNTIME_BLOCKED (stage=$reportedStage)"
     }
 
     Write-Host "RC1_RUNTIME_READY"
@@ -153,6 +161,10 @@ finally {
 
     if ($server -and -not $server.HasExited) {
         Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+    }
+
+    if ($profilePath -and (Test-Path $profilePath)) {
+        Remove-Item $profilePath -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     Remove-Item $tempServer -Force -ErrorAction SilentlyContinue
