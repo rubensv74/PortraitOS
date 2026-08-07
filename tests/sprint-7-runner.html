@@ -110,10 +110,13 @@
                     }
                 });
             } catch (error) {
+                const failureStage = step;
                 fail(
                     "demo prepare runtime exception",
-                    `${error?.code || error?.name || "ERROR"}: ${error?.message || String(error)} | progress=${progress.join(" > ")}`
+                    `${error?.code || error?.name || "ERROR"}: ${error?.message || String(error)} | stage=${failureStage} | progress=${progress.join(" > ")}`
                 );
+                step = failureStage;
+                error.__sprint7Reported = true;
                 throw error;
             }
             step = "demo-verify";
@@ -153,7 +156,9 @@
 
             step = "complete";
         } catch (error) {
-            fail("runtime exception", error?.stack || error?.message || String(error));
+            if (!error?.__sprint7Reported) {
+                fail("runtime exception", error?.stack || error?.message || String(error));
+            }
         }
         await send();
     }, { once: true });
