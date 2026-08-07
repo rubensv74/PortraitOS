@@ -52,9 +52,9 @@ frame.addEventListener("load",async()=>{const w=frame.contentWindow;try{
   check("comparacion visible",w.document.querySelector("[data-history-diff]")?.hidden===false,`hidden=${w.document.querySelector("[data-history-diff]")?.hidden}`);
 
   mark("profile-b-create");
-  w.ProfileService.create("RC1 Profile B");
-  const profileB=w.ProfileService.getActive();
+  const profileB=w.ProfileManager.create({name:"RC1 Profile B"});
   check("perfil B distinto",Boolean(profileB?.id)&&profileB.id!==profileA.id,`A=${profileA?.id} B=${profileB?.id}`);
+  check("perfil B realmente activo",w.ProfileManager.getState().activeProfileId===profileB.id,`active=${w.ProfileManager.getState().activeProfileId} B=${profileB.id}`);
   mark("profile-b-history");
   w.PromptHistoryService.clear({profileId:profileB.id});
   w.PromptHistoryService.add({profileId:profileB.id,profileName:profileB.name,prompt:"RC1 prompt B",provider:"generic",level:"professional",title:"B uno",generationId:"rc1-gen-b1"},{skipDuplicate:false});
@@ -63,7 +63,9 @@ frame.addEventListener("load",async()=>{const w=frame.contentWindow;try{
   check("B no muestra A",!w.HistoryBinding.getHistory().some(x=>x.profileId===profileA.id),JSON.stringify(w.HistoryBinding.getHistory()));
 
   mark("back-a");
-  w.ProfileService.setActive(profileA.id);w.HistoryBinding.refresh();
+  w.ProfileManager.select(profileA.id);
+  w.HistoryBinding.refresh();
+  check("perfil A realmente activo",w.ProfileManager.getState().activeProfileId===profileA.id,`active=${w.ProfileManager.getState().activeProfileId} A=${profileA.id}`);
   check("volver A muestra 2",w.HistoryBinding.getState().totalItems===2,JSON.stringify(w.HistoryBinding.getState()));
   check("A no muestra B",!w.HistoryBinding.getHistory().some(x=>x.profileId===profileB.id),JSON.stringify(w.HistoryBinding.getHistory()));
 
