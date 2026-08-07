@@ -1,0 +1,11 @@
+{
+  "name": "PortraitOS",
+  "version": "1.0.0-rc.1",
+  "channel": "rc",
+  "build": "20260807",
+  "schemaVersion": "1.0.0",
+  "storageVersion": 2,
+  "baseCommit": "d9017ad427c15aebbd66f5889b8f543f072366bd",
+  "environment": "local",
+  "releasedAt": null
+}

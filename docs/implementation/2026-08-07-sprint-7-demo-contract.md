@@ -2,151 +2,130 @@
 
 ## Estado
 
-**CONTRACT FROZEN FOR IMPLEMENTATION**
+**IMPLEMENTED — VALIDATION PENDING**
 
 ## Propósito
 
 Demo Mode existe para demostrar PortraitOS sin preparar manualmente un perfil completo y sin utilizar imágenes ni datos personales reales.
 
-No es una segunda arquitectura, un fixture oculto ni una ruta alternativa de negocio. Debe utilizar las fachadas públicas ya existentes y producir un estado equivalente al que generaría un usuario real.
+No es una segunda arquitectura, un fixture oculto ni una ruta alternativa de negocio. Utiliza las fachadas públicas existentes y produce un estado equivalente al que generaría un usuario real.
 
 ## Principios obligatorios
 
 1. **Aislamiento:** nunca modifica un perfil real existente.
 2. **Reversibilidad:** toda la demo puede eliminarse de forma explícita.
 3. **Datos sintéticos:** no incluye personas reales ni datos biométricos reales.
-4. **Fachadas canónicas:** usa ProfileManager/ProfileService, Photos, Identity, Direction, Validation, Prompt, History, Export y Review mediante sus contratos públicos.
+4. **Fachadas canónicas:** usa ProfileManager/ProfileService, Photos, Identity, Direction, Validation, Prompt, History y Export mediante sus contratos públicos.
 5. **Persistencia normal:** el perfil demo puede sobrevivir a reload exactamente como un perfil normal.
-6. **Marcado inequívoco:** nombre, descripción y/o metadata identifican el perfil como demostración.
-7. **Idempotencia:** lanzar Demo Mode de nuevo no duplica silenciosamente un escenario existente.
-8. **Sin bypass en producción:** no se utilizará `skipReadinessCheck` ni flags equivalentes para simular éxito.
+6. **Marcado inequívoco:** nombre, descripción y tags identifican el perfil como demostración.
+7. **Idempotencia:** lanzar Demo Mode de nuevo reutiliza el escenario existente y no duplica silenciosamente History.
+8. **Sin bypass en producción:** no utiliza `skipReadinessCheck` ni flags equivalentes.
+
+## Implementación
+
+### Servicio
+
+`app/js/services/demo.mode.service.js`
+
+Responsabilidades:
+
+- localizar/reutilizar el perfil Demo RC1;
+- crear un perfil aislado mediante `ProfileManager`;
+- generar cinco imágenes abstractas válidas mediante Canvas;
+- importarlas mediante `ProfileService.photos`;
+- completar Identity y vincular evidencias mediante `ProfileService.identity`;
+- validar y bloquear Identity con confirmación explícita;
+- preparar Direction mediante `ProfileService.direction`;
+- exigir readiness real con `ProfileValidation`;
+- generar exactamente una versión mediante `PromptBinding`;
+- construir un paquete con `PromptExportService` sin descarga automática;
+- eliminar únicamente el perfil demo mediante `ProfileManager`.
+
+### Binding
+
+`app/js/bindings/demo.mode.binding.js`
+
+Añade acciones secundarias en la cabecera:
+
+- `Demo RC1` / `Abrir Demo RC1`;
+- `Eliminar demo`.
+
+Antes de crear o eliminar datos exige confirmación y explica el alcance. Durante la preparación muestra el paso actual y bloquea dobles ejecuciones.
+
+### Fixtures visuales
+
+Las cinco imágenes son composiciones Canvas abstractas de 720 × 720 px con rotulación `PORTRAITOS DEMO`.
+
+No representan rostros, sujetos ni identidades reales.
 
 ## Escenario Demo RC1
 
 ### Perfil
 
-Nombre recomendado: `Demo RC1 — Retrato editorial`
+Nombre: `Demo RC1 — Retrato editorial`
 
-Debe incluir descripción y tags que indiquen que los datos son sintéticos.
+Tags:
+
+- `portraitos-demo-rc1`
+- `demo`
+- `rc1`
+- `editorial`
 
 ### Fotografías
 
-Generar al menos cinco imágenes sintéticas mediante Canvas/browser APIs.
-
-Objetivo de los fixtures:
-
-- permitir probar Photos;
-- ofrecer diferentes ángulos/roles conceptuales;
-- no intentar representar a una persona real;
-- producir archivos válidos para el pipeline actual.
+Cinco imágenes sintéticas con roles conceptuales frontal, tres cuartos, perfiles y detalle.
 
 ### Identity
 
-Completar únicamente los campos necesarios para demostrar el contrato vigente.
+Las doce secciones reciben descripciones sintéticas. Las ocho secciones críticas reciben evidencias con IDs/checksums creados por Photos.
 
-Las evidencias deben vincularse a las fotografías sintéticas mediante IDs/checksums reales creados por Photos.
-
-### Lock
-
-La identidad debe alcanzar los requisitos formales de cobertura y principal establecidos por el dominio antes de bloquearse.
-
-No relajar reglas.
+El servicio no altera reglas: primero valida Identity y después ejecuta `lock({ confirm: true })`.
 
 ### Creative Direction
 
-Completar un escenario editorial profesional utilizando valores válidos de la UI actual.
+Escenario editorial profesional con iluminación Rembrandt, cámara de retrato, composición 4:5, fondo de estudio, vestuario profesional y tratamiento realista.
 
 ### Validation
 
-Ejecutar la misma validación canónica del producto.
-
-El perfil demo debe alcanzar readiness suficiente por méritos propios.
+Se utiliza `ProfileValidation.getGenerationReadiness()` sin bypass.
 
 ### Generation
 
-Generar exactamente un Portrait Contract mediante `PromptBinding`.
-
-Debe producir:
-
-- `generationId`;
-- resultado visible;
-- una entrada de History;
-- trazabilidad con el perfil demo.
+`PromptBinding.generate()` produce una generación real del pipeline local y una única entrada History.
 
 ### Export
 
-Preparar un PortraitOS package válido sin forzar una descarga automática durante la construcción de la demo.
+`PromptExportService.exportPackage()` construye un `.portraitos` lógico completo con `download: false` durante la demo.
 
 ### Review
 
-Demo Mode puede preparar la sección Review y sus metadatos de generación/contrato. No debe inventar una imagen generada por un proveedor externo como si fuera un resultado real.
-
-Si Sprint 7 necesita demostrar Review end-to-end, debe utilizar una imagen sintética claramente marcada como fixture de revisión.
-
-## UX del modo demo
-
-Entrada recomendada: acción secundaria `Demo` visible pero no dominante.
-
-Antes de crear datos debe informar:
-
-- que se crearán datos sintéticos;
-- que no se modificarán perfiles reales;
-- que el perfil demo podrá eliminarse.
-
-Durante ejecución:
-
-- mostrar progreso/estado;
-- bloquear dobles ejecuciones;
-- no congelar la UI;
-- informar del paso actual.
-
-Al terminar:
-
-- seleccionar el perfil demo;
-- llevar al usuario a una vista útil del recorrido;
-- mostrar confirmación de que el escenario está preparado.
-
-## Limpieza
-
-Debe existir una acción explícita para eliminar el perfil Demo actual.
-
-La limpieza debe respetar las mismas reglas de eliminación y lifecycle de binarios del producto.
-
-No borrar bases de datos completas, localStorage global ni otros perfiles.
-
-## Errores
-
-Si cualquier fase falla:
-
-- detener el flujo;
-- mostrar el paso fallido;
-- no presentar el demo como completado;
-- intentar rollback/limpieza solo mediante APIs existentes;
-- mantener los perfiles reales intactos.
+Sprint 7 no inventa un resultado de proveedor externo. Review permanece disponible para que el usuario cargue posteriormente una imagen real o un fixture explícito.
 
 ## Tests obligatorios
 
-Sprint 7 debe demostrar:
+`tests/sprint-7-runner.html` cubre ahora:
 
-1. Crear demo desde estado con perfil real existente no altera el perfil real.
-2. Cinco fotografías sintéticas válidas.
-3. Principal válida.
-4. Evidencias válidas.
-5. Identity lock válido.
-6. Direction ready.
-7. Validation ready.
-8. Una generación y una única entrada History.
-9. Package exportable.
-10. Review fixture opcional claramente sintético.
-11. Reload conserva demo.
-12. Eliminar demo no afecta perfiles reales.
-13. Segunda ejecución no crea duplicados inesperados.
-14. Cero errores runtime.
+1. Release metadata RC1.
+2. Orientation Layer con cuatro áreas.
+3. DemoModeService y DemoModeBinding cargados.
+4. Perfil real inicial preservado.
+5. Cinco fotografías sintéticas.
+6. Evidencia visual válida.
+7. Identity lock válido.
+8. Direction ready.
+9. Validation ready.
+10. Una generación y una única entrada History.
+11. Package exportable.
+12. Segunda ejecución idempotente.
+13. Persistencia de demo y perfil real al abrir una segunda instancia de `app/index.html`.
+14. Cleanup elimina demo y conserva el perfil real.
 
-## Fuera de alcance
+## Gate pendiente
 
-- llamada a proveedores externos;
-- generar una imagen real mediante IA;
-- descargar assets desde Internet;
-- simular identidad de una persona;
-- añadir reglas de dominio especiales para Demo Mode.
+La implementación no se declara cerrada hasta obtener:
+
+- `SPRINT_7_READY` dos veces consecutivas;
+- regresión Sprint 0–6 verde;
+- RC1 Runtime Gate verde;
+- `git diff --check` PASS;
+- working tree controlado.
