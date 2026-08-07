@@ -58,7 +58,13 @@ try {
     Write-Host $result.text
     Write-Host "STEP=$($result.step)"
     Write-Host "TEST_STATUS=$($result.status)"
-    if ($result.status -ne "passed") { throw "SPRINT_7_BLOCKED (stage=$($result.step))" }
+    if ($result.status -ne "passed") {
+        $failureLine = ($result.text -split "`n" | Where-Object { $_ -like "FAIL demo prepare runtime exception*" } | Select-Object -Last 1)
+        if ($failureLine) {
+            Write-Host "FAILURE_DETAIL=$failureLine" -ForegroundColor Red
+        }
+        throw "SPRINT_7_BLOCKED (stage=$($result.step))"
+    }
     Write-Host "SPRINT_7_READY"
 } finally {
     if ($browserProcess -and -not $browserProcess.HasExited) { Stop-Process -Id $browserProcess.Id -Force -ErrorAction SilentlyContinue }
