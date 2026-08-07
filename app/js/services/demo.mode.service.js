@@ -198,7 +198,7 @@ const DemoModeService = (() => {
             });
 
             onProgress("validation", "Validando readiness canónico.");
-            const readiness = ProfileValidation.getGenerationReadiness();
+            const readiness = ProfileValidation.getGenerationReadiness(ProfileService.getActive());
             if (!readiness.ready) {
                 const blockerCodes = Array.isArray(readiness.errors)
                     ? readiness.errors.map(item => item.code).filter(Boolean)
@@ -211,7 +211,7 @@ const DemoModeService = (() => {
 
             onProgress("generation", "Generando Portrait Contract.");
             const beforeHistory = getDemoHistory(profile.id).length;
-            const generation = PromptBinding.generate(null, {
+            const generation = PromptBinding.generate(ProfileService.getActive(), {
                 provider: "generic",
                 level: "professional",
                 language: "es",
