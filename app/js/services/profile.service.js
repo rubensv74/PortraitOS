@@ -768,113 +768,148 @@ const ProfileService = (() => {
                         profile
                     );
 
-                emit(
-                    "direction:updated",
-                    {
-                        profileId:
-                            profile.id,
-                        direction:
-                            clone(result)
-                    }
+                return commitDirectionChange(
+                    "replace",
+                    result
                 );
-
-                return result;
             },
 
         updateGeneral:
             changes =>
-                ProfileDirection.updateGeneral(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-general",
+                    ProfileDirection.updateGeneral(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         updateLighting:
             changes =>
-                ProfileDirection.updateLighting(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-lighting",
+                    ProfileDirection.updateLighting(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         updateCamera:
             changes =>
-                ProfileDirection.updateCamera(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-camera",
+                    ProfileDirection.updateCamera(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         updateComposition:
             changes =>
-                ProfileDirection.updateComposition(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-composition",
+                    ProfileDirection.updateComposition(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         updateBackground:
             changes =>
-                ProfileDirection.updateBackground(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-background",
+                    ProfileDirection.updateBackground(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         updateWardrobe:
             changes =>
-                ProfileDirection.updateWardrobe(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-wardrobe",
+                    ProfileDirection.updateWardrobe(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         updatePose:
             changes =>
-                ProfileDirection.updatePose(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-pose",
+                    ProfileDirection.updatePose(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         updateTreatment:
             changes =>
-                ProfileDirection.updateTreatment(
-                    getMutableActive(),
-                    changes
+                commitDirectionChange(
+                    "update-treatment",
+                    ProfileDirection.updateTreatment(
+                        getMutableActive(),
+                        changes
+                    )
                 ),
 
         addConstraint:
             value =>
-                ProfileDirection.addConstraint(
-                    getMutableActive(),
-                    value
+                commitDirectionChange(
+                    "add-constraint",
+                    ProfileDirection.addConstraint(
+                        getMutableActive(),
+                        value
+                    )
                 ),
 
         removeConstraint:
             value =>
-                ProfileDirection.removeConstraint(
-                    getMutableActive(),
-                    value
+                commitDirectionChange(
+                    "remove-constraint",
+                    ProfileDirection.removeConstraint(
+                        getMutableActive(),
+                        value
+                    )
                 ),
 
         addReference:
             reference =>
-                ProfileDirection.addReference(
-                    getMutableActive(),
-                    reference
+                commitDirectionChange(
+                    "add-reference",
+                    ProfileDirection.addReference(
+                        getMutableActive(),
+                        reference
+                    )
                 ),
 
         removeReference:
             referenceId =>
-                ProfileDirection.removeReference(
-                    getMutableActive(),
-                    referenceId
+                commitDirectionChange(
+                    "remove-reference",
+                    ProfileDirection.removeReference(
+                        getMutableActive(),
+                        referenceId
+                    )
                 ),
 
         markReady:
             () =>
-                ProfileDirection.markReady(
-                    getMutableActive()
+                commitDirectionChange(
+                    "mark-ready",
+                    ProfileDirection.markReady(
+                        getMutableActive()
+                    )
                 ),
 
         archive:
             () =>
-                ProfileDirection.archive(
-                    getMutableActive()
+                commitDirectionChange(
+                    "archive",
+                    ProfileDirection.archive(
+                        getMutableActive()
+                    )
                 ),
 
         validate:
@@ -911,11 +946,32 @@ const ProfileService = (() => {
 
         reset:
             () =>
-                ProfileDirection.reset(
-                    getMutableActive()
+                commitDirectionChange(
+                    "reset",
+                    ProfileDirection.reset(
+                        getMutableActive()
+                    )
                 )
 
     });
+
+    function commitDirectionChange(operation, result) {
+        if (window.ProfileManager?.saveActive) {
+            ProfileManager.saveActive();
+        }
+
+        const profile = getMutableActive();
+        emit(
+            "direction:updated",
+            {
+                profileId: profile.id,
+                operation,
+                direction: ProfileDirection.get(profile)
+            }
+        );
+
+        return result;
+    }
 
     /* ========================================================
        VALIDACIÓN
@@ -928,255 +984,81 @@ const ProfileService = (() => {
         );
     }
 
-    function validateDraft() {
-        return ProfileValidation
-            .validateForDraft(
-                getMutableActive()
-            );
-    }
-
     function validateForPrompt() {
-        return ProfileValidation
-            .validateForPrompt(
-                getMutableActive()
-            );
+        return ProfileValidation.validateForPrompt(
+            getMutableActive()
+        );
     }
 
-    function assertReadyForPrompt() {
-        return ProfileValidation
-            .assertReadyForPrompt(
-                getMutableActive()
-            );
+    function validateForDraft() {
+        return ProfileValidation.validateForDraft(
+            getMutableActive()
+        );
     }
 
-    /* ========================================================
-       CONTRATOS
-       ======================================================== */
-
-    function buildContracts() {
-        const profile =
-            getMutableActive();
-
-        return {
-            profile: {
-                id:
-                    profile.id,
-                name:
-                    profile.name,
-                version:
-                    profile.version
-            },
-
-            identity:
-                ProfileIdentity
-                    .buildIdentityContract(
-                        profile
-                    ),
-
-            creative:
-                ProfileDirection
-                    .buildCreativeContract(
-                        profile
-                    ),
-
-            generatedAt:
-                new Date().toISOString()
-        };
+    function readiness() {
+        return ProfileValidation.getGenerationReadiness(
+            getMutableActive()
+        );
     }
 
     /* ========================================================
-       IMPORTACIÓN Y EXPORTACIÓN
+       PERSISTENCIA / EXPORTACIÓN
        ======================================================== */
+
+    function save() {
+        const profile = getMutableActive();
+        ProfileManager?.saveActive?.();
+        emit("profile:saved", clone(profile));
+        return clone(profile);
+    }
 
     function exportProfile(options = {}) {
-        return ProfileImportExport
-            .exportProfile(
-                getMutableActive(),
-                options
-            );
-    }
-
-    function exportObject(options = {}) {
-        return ProfileImportExport
-            .exportObject(
-                getMutableActive(),
-                options
-            );
-    }
-
-    function download(filename) {
-        ProfileImportExport.download(
+        return ProfileImportExport.exportProfile(
             getMutableActive(),
-            filename
+            options
         );
     }
 
-    function importProfile(json) {
-        const profile =
-            ProfileImportExport
-                .importProfile(json);
-
-        return load(profile);
-    }
-
-    function importObject(object) {
-        const profile =
-            ProfileImportExport
-                .importObject(object);
-
-        return load(profile);
-    }
-
-    /* ========================================================
-       PERSISTENCIA
-       ======================================================== */
-
-    function save(storageKey) {
-        const profile =
-            getMutableActive();
-
-        const key =
-            normalizeText(storageKey) ||
-            buildStorageKey(profile.id);
-
-        const serialized =
-            ProfileImportExport
-                .exportProfile(profile);
-
-        if (!window.ProfileStorage?.setLegacy) {
-            throw createError("MISSING_PROFILE_STORAGE", "ProfileStorage no está disponible.");
-        }
-        ProfileStorage.setLegacy(key, serialized);
-
-        emit(
-            "profile:saved",
-            {
-                key,
-                profileId:
-                    profile.id
-            }
+    function importProfile(source, options = {}) {
+        const imported = ProfileImportExport.importProfile(
+            source,
+            options
         );
 
-        return key;
-    }
-
-    function restore(storageKey) {
-        const key =
-            normalizeText(storageKey);
-
-        if (!key) {
-            throw createError(
-                "STORAGE_KEY_REQUIRED",
-                "Debe indicarse una clave de almacenamiento."
-            );
-        }
-
-        const serialized = window.ProfileStorage?.getLegacy?.(key) || null;
-
-        if (!serialized) {
-            throw createError(
-                "PROFILE_NOT_FOUND",
-                "No se encontró el perfil guardado."
-            );
-        }
-
-        return importProfile(serialized);
-    }
-
-    function removeSaved(storageKey) {
-        const key =
-            normalizeText(storageKey);
-
-        if (!key) {
-            throw createError(
-                "STORAGE_KEY_REQUIRED",
-                "Debe indicarse una clave de almacenamiento."
-            );
-        }
-
-        if (!window.ProfileStorage?.removeLegacy) {
-            throw createError("MISSING_PROFILE_STORAGE", "ProfileStorage no está disponible.");
-        }
-        ProfileStorage.removeLegacy(key);
-
-        emit(
-            "profile:storage-removed",
-            { key }
-        );
-
-        return true;
+        return load(imported);
     }
 
     /* ========================================================
        UTILIDADES INTERNAS
        ======================================================== */
 
-    function normalizeProfile(profile) {
-        const now =
-            new Date().toISOString();
-
-        profile.id =
-            normalizeText(profile.id) ||
-            createProfileId();
-
-        profile.name =
-            normalizeText(profile.name) ||
-            "Perfil sin nombre";
-
-        profile.description =
-            normalizeText(
-                profile.description
-            );
-
-        profile.version =
-            normalizeText(profile.version) ||
-            PROFILE_VERSION;
-
-        profile.tags =
-            normalizeList(profile.tags);
-
-        profile.createdAt =
-            profile.createdAt || now;
-
-        profile.updatedAt =
-            profile.updatedAt || now;
-
-        ensureMeta(profile);
-    }
-
-    function ensureMeta(profile) {
-        if (
-            !profile.meta ||
-            typeof profile.meta !== "object"
-        ) {
-            profile.meta = {};
-        }
-
-        profile.meta.createdAt =
-            profile.meta.createdAt ||
-            profile.createdAt;
-
-        profile.meta.updatedAt =
-            profile.meta.updatedAt ||
-            profile.updatedAt;
-    }
-
-    function touch(profile) {
-        const now =
-            new Date().toISOString();
-
-        profile.updatedAt = now;
-
-        ensureMeta(profile);
-
-        profile.meta.updatedAt = now;
-    }
-
     function assertActiveProfile() {
         if (!activeProfile) {
             throw createError(
-                "NO_ACTIVE_PROFILE",
+                "PROFILE_REQUIRED",
                 "No existe ningún perfil activo."
+            );
+        }
+    }
+
+    function validateDependencies() {
+        const required = [
+            "ProfilePhotos",
+            "ProfileIdentity",
+            "ProfileDirection",
+            "ProfileValidation"
+        ];
+
+        const missing = required.filter(
+            dependency =>
+                !window[dependency]
+        );
+
+        if (missing.length) {
+            throw createError(
+                "MISSING_DEPENDENCY",
+                `Faltan dependencias de ProfileService: ${missing.join(", ")}.`
             );
         }
     }
@@ -1189,168 +1071,91 @@ const ProfileService = (() => {
         ) {
             throw createError(
                 "INVALID_PROFILE",
-                "El perfil indicado no es válido."
+                "El perfil no es válido."
             );
         }
     }
 
-    function validateDependencies() {
-        const dependencies = [
-            "ProfilePhotos",
-            "ProfileIdentity",
-            "ProfileDirection",
-            "ProfileValidation",
-            "ProfileImportExport"
-        ];
-
-        const missing =
-            dependencies.filter(
-                name =>
-                    !window[name]
-            );
-
-        if (missing.length) {
-            throw createError(
-                "MISSING_DEPENDENCY",
-                `Faltan dependencias: ${missing.join(", ")}.`
-            );
-        }
+    function normalizeProfile(profile) {
+        profile.name = normalizeText(profile.name) || "Perfil sin nombre";
+        profile.description = normalizeText(profile.description);
+        profile.tags = normalizeList(profile.tags);
+        ensureMeta(profile);
+        profile.version = normalizeText(profile.version) || PROFILE_VERSION;
+        profile.createdAt = profile.createdAt || profile.meta.createdAt || new Date().toISOString();
+        profile.updatedAt = profile.updatedAt || profile.meta.updatedAt || profile.createdAt;
     }
 
-    function buildStorageKey(profileId) {
-        return `portraitos.profile.${profileId}`;
-    }
-
-    function normalizeText(value) {
-        return String(value || "")
-            .trim();
-    }
-
-    function normalizeList(values) {
-        if (!Array.isArray(values)) {
-            return [];
+    function ensureMeta(profile) {
+        if (!profile.meta || typeof profile.meta !== "object" || Array.isArray(profile.meta)) {
+            profile.meta = {};
         }
 
-        return [
-            ...new Set(
-                values
-                    .map(normalizeText)
-                    .filter(Boolean)
-            )
-        ];
+        profile.meta.createdAt = profile.meta.createdAt || profile.createdAt || new Date().toISOString();
+        profile.meta.updatedAt = profile.meta.updatedAt || profile.updatedAt || profile.meta.createdAt;
+        profile.meta.source = normalizeText(profile.meta.source) || "PortraitOS";
+    }
+
+    function touch(profile) {
+        profile.updatedAt = new Date().toISOString();
+        ensureMeta(profile);
+        profile.meta.updatedAt = profile.updatedAt;
     }
 
     function createProfileId() {
-        if (
-            window.crypto &&
-            typeof crypto.randomUUID ===
-                "function"
-        ) {
+        if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
             return crypto.randomUUID();
         }
-
-        return [
-            "profile",
-            Date.now(),
-            Math.random()
-                .toString(36)
-                .slice(2, 10)
-        ].join("-");
+        return `profile_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     }
 
-    function emit(
-        eventName,
-        detail
-    ) {
-        if (
-            window.AppEvents &&
-            typeof AppEvents.emit ===
-                "function"
-        ) {
-            AppEvents.emit(
-                eventName,
-                detail
-            );
+    function emit(name, detail) {
+        if (window.AppEvents?.emit) AppEvents.emit(name, detail);
+        else window.dispatchEvent(new CustomEvent(name, { detail }));
+    }
 
-            return;
-        }
+    function normalizeText(value) {
+        return String(value || "").trim();
+    }
 
-        window.dispatchEvent(
-            new CustomEvent(
-                eventName,
-                { detail }
-            )
-        );
+    function normalizeList(values) {
+        if (!Array.isArray(values)) return [];
+        return [...new Set(values.map(normalizeText).filter(Boolean))];
     }
 
     function clone(value) {
-        if (
-            typeof structuredClone ===
-                "function"
-        ) {
-            return structuredClone(value);
-        }
-
-        return JSON.parse(
-            JSON.stringify(value)
-        );
+        return typeof structuredClone === "function"
+            ? structuredClone(value)
+            : JSON.parse(JSON.stringify(value));
     }
 
-    function createError(
-        code,
-        message
-    ) {
-        const error =
-            new Error(message);
-
-        error.name =
-            "ProfileServiceError";
-
+    function createError(code, message) {
+        const error = new Error(message);
+        error.name = "ProfileServiceError";
         error.code = code;
-
         return error;
     }
-
-    /* ========================================================
-       API PÚBLICA
-       ======================================================== */
 
     return Object.freeze({
         create,
         load,
         setActive,
-        getActive,
         clearActive,
+        getActive,
         duplicate,
         update,
         getSummary,
-
         photos,
         identity,
         direction,
-
         validate,
-        validateDraft,
         validateForPrompt,
-        assertReadyForPrompt,
-
-        buildContracts,
-
-        exportProfile,
-        exportObject,
-        download,
-        importProfile,
-        importObject,
-
+        validateForDraft,
+        readiness,
         save,
-        restore,
-        removeSaved,
-
-        constants: Object.freeze({
-            PROFILE_VERSION
-        })
+        exportProfile,
+        importProfile
     });
-
 })();
 
 window.ProfileService = ProfileService;
