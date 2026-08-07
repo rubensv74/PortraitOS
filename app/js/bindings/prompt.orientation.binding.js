@@ -14,26 +14,37 @@ const PromptOrientationBinding = (() => {
     let root = null;
     let nav = null;
     let observer = null;
+    let historyReadyHandler = null;
 
     function init(options = {}) {
-        if (initialized) return getState();
+        if (initialized) {
+            refresh();
+            return getState();
+        }
 
         root = (options.root || document).querySelector(ROOT_SELECTOR);
         if (!root) {
             throw createError("PROMPT_WORKSPACE_NOT_FOUND", "No se encontró el workspace de Generación.");
         }
 
+        refresh();
+        bindHistoryReady();
+
+        initialized = true;
+        root.setAttribute("data-prompt-orientation-ready", "true");
+        return getState();
+    }
+
+    function refresh() {
+        if (!root) return getState();
+
         const available = SECTIONS.filter(item => root.querySelector(item.selector));
         if (!available.length) {
             throw createError("PROMPT_SECTIONS_NOT_FOUND", "No se encontraron secciones internas de Generación.");
         }
 
-        nav = root.querySelector(`[${NAV_MARKER}]`) || createNavigation(available);
-        bindNavigation();
+        rebuildNavigation(available);
         observeSections(available);
-
-        initialized = true;
-        root.setAttribute("data-prompt-orientation-ready", "true");
         return getState();
     }
 
@@ -41,6 +52,10 @@ const PromptOrientationBinding = (() => {
         observer?.disconnect();
         observer = null;
         nav?.removeEventListener("click", handleClick);
+        if (historyReadyHandler) {
+            document.removeEventListener("portraitos:history-runtime-ready", historyReadyHandler);
+            historyReadyHandler = null;
+        }
         root?.removeAttribute("data-prompt-orientation-ready");
         initialized = false;
         root = null;
@@ -48,22 +63,34 @@ const PromptOrientationBinding = (() => {
         return true;
     }
 
-    function createNavigation(items) {
+    function rebuildNavigation(items) {
+        const activeId = nav?.querySelector("[aria-current='true']")?.dataset.promptOrientationTarget || "generate";
+        if (!nav) {
+            nav = createNavigationShell();
+            nav.addEventListener("click", handleClick);
+        }
+
+        nav.innerHTML = items.map((item, index) => {
+            const active = item.id === activeId || (!items.some(candidate => candidate.id === activeId) && index === 0);
+            return `
+                <button
+                    type="button"
+                    class="prompt-orientation__item${active ? " is-active" : ""}"
+                    data-prompt-orientation-target="${item.id}"
+                    aria-current="${active ? "true" : "false"}"
+                >
+                    <span class="prompt-orientation__index">0${index + 1}</span>
+                    <span>${item.label}</span>
+                </button>
+            `;
+        }).join("");
+    }
+
+    function createNavigationShell() {
         const element = document.createElement("nav");
         element.className = "prompt-orientation";
         element.setAttribute(NAV_MARKER, "");
         element.setAttribute("aria-label", "Áreas del paso Generación");
-        element.innerHTML = items.map((item, index) => `
-            <button
-                type="button"
-                class="prompt-orientation__item${index === 0 ? " is-active" : ""}"
-                data-prompt-orientation-target="${item.id}"
-                aria-current="${index === 0 ? "true" : "false"}"
-            >
-                <span class="prompt-orientation__index">0${index + 1}</span>
-                <span>${item.label}</span>
-            </button>
-        `).join("");
 
         const heading = root.querySelector(":scope > .panel-heading");
         if (heading?.nextSibling) root.insertBefore(element, heading.nextSibling);
@@ -72,8 +99,19 @@ const PromptOrientationBinding = (() => {
         return element;
     }
 
-    function bindNavigation() {
-        nav.addEventListener("click", handleClick);
+    function bindHistoryReady() {
+        historyReadyHandler = () => {
+            try {
+                refresh();
+            } catch (error) {
+                console.error("PortraitOS: no se pudo refrescar la navegación de Generación.", error);
+            }
+        };
+        document.addEventListener("portraitos:history-runtime-ready", historyReadyHandler);
+
+        if (document.documentElement.getAttribute("data-history-runtime-ready") === "true") {
+            refresh();
+        }
     }
 
     function handleClick(event) {
@@ -90,6 +128,8 @@ const PromptOrientationBinding = (() => {
     }
 
     function observeSections(items) {
+        observer?.disconnect();
+        observer = null;
         if (!("IntersectionObserver" in window)) return;
         observer = new IntersectionObserver(entries => {
             const visible = entries
@@ -129,7 +169,7 @@ const PromptOrientationBinding = (() => {
         return error;
     }
 
-    return Object.freeze({ init, destroy, getState });
+    return Object.freeze({ init, destroy, refresh, getState });
 })();
 
 window.PromptOrientationBinding = PromptOrientationBinding;
