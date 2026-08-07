@@ -50,11 +50,21 @@ if (-not $content.Contains("data-release-version")) {
     $content = $content.Replace($legacyFooter, $newFooter)
 }
 
-# Scripts
+# Scripts RC1
 Add-OnceBefore -Needle '    <script src="js/wizard.js"></script>' -Marker 'src="js/services/release.metadata.js"' -Insertion @'
     <script src="js/services/release.metadata.js"></script>
+    <script src="js/services/demo.mode.service.js"></script>
     <script src="js/bindings/release.metadata.binding.js"></script>
     <script src="js/bindings/prompt.orientation.binding.js"></script>
+    <script src="js/bindings/demo.mode.binding.js"></script>
+'@
+
+# Si la metadata ya estaba cableada pero Demo Mode todavía no, añadir solo Demo.
+Add-OnceBefore -Needle '    <script src="js/bindings/release.metadata.binding.js"></script>' -Marker 'src="js/services/demo.mode.service.js"' -Insertion @'
+    <script src="js/services/demo.mode.service.js"></script>
+'@
+Add-OnceBefore -Needle '    <script src="js/wizard.js"></script>' -Marker 'src="js/bindings/demo.mode.binding.js"' -Insertion @'
+    <script src="js/bindings/demo.mode.binding.js"></script>
 '@
 
 # Bootstrap init
@@ -64,9 +74,15 @@ if (-not $content.Contains("PromptOrientationBinding.init();")) {
     $replacement = @'
                     ReviewBinding.init();
                     PromptOrientationBinding.init();
+                    DemoModeBinding.init();
                     ReleaseMetadataBinding.init().catch(error => console.warn("PortraitOS: metadata RC1 no disponible.", error));
 '@
     $content = $content.Replace($bootstrapAnchor, $replacement)
+}
+elseif (-not $content.Contains("DemoModeBinding.init();")) {
+    $orientationAnchor = "                    PromptOrientationBinding.init();"
+    if (-not $content.Contains($orientationAnchor)) { throw "No se encontró PromptOrientationBinding.init()." }
+    $content = $content.Replace($orientationAnchor, "$orientationAnchor`r`n                    DemoModeBinding.init();")
 }
 
 if ($content -eq $original) {
