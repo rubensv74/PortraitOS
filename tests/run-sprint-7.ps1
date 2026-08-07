@@ -59,8 +59,9 @@ try {
     Write-Host "STEP=$($result.step)"
     Write-Host "TEST_STATUS=$($result.status)"
     if ($result.status -ne "passed") {
-        $failureLine = ($result.text -split "`n" | Where-Object { $_ -like "FAIL demo prepare runtime exception*" } | Select-Object -Last 1)
-        if ($failureLine) {
+        Write-Host "RESULT_JSON=$($result | ConvertTo-Json -Depth 8 -Compress)" -ForegroundColor DarkYellow
+        $failureLines = @($result.text -split "`n" | Where-Object { $_ -like "FAIL*" })
+        foreach ($failureLine in $failureLines) {
             Write-Host "FAILURE_DETAIL=$failureLine" -ForegroundColor Red
         }
         throw "SPRINT_7_BLOCKED (stage=$($result.step))"
