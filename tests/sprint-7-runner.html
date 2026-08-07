@@ -10,6 +10,8 @@
     const lines = [];
     let failed = false;
     let step = "boot";
+    let failureError = null;
+    let failureAudit = null;
     const out = document.getElementById("out");
     const iframe = document.getElementById("app");
 
@@ -27,18 +29,98 @@
         return false;
     }
 
+    function buildReadinessAudit(win) {
+        try {
+            const profile = win.ProfileService?.getActive?.() || null;
+            const photos = Array.isArray(profile?.identity?.photos) ? profile.identity.photos : [];
+            const evidence = profile && win.ProfileIdentity?.getEvidenceState
+                ? win.ProfileIdentity.getEvidenceState(profile)
+                : null;
+            let validation = null;
+            let validationException = null;
+            try {
+                validation = profile && win.ProfileValidation?.validateForPrompt
+                    ? win.ProfileValidation.validateForPrompt(profile)
+                    : null;
+            } catch (error) {
+                validationException = {
+                    code: error?.code || error?.name || "ERROR",
+                    message: error?.message || String(error)
+                };
+            }
+            return {
+                profileId: profile?.id || null,
+                profileName: profile?.name || null,
+                photoCount: photos.length,
+                primaryCount: photos.filter(photo => photo?.isPrimary === true).length,
+                sources: photos.map(photo => ({
+                    id: photo?.id || null,
+                    sourceDataUrl: Boolean(photo?.source?.dataUrl),
+                    sourceBinaryId: Boolean(photo?.source?.binaryId),
+                    thumbnailDataUrl: Boolean(photo?.thumbnail?.dataUrl),
+                    thumbnailBinaryId: Boolean(photo?.thumbnail?.binaryId),
+                    checksum: Boolean(photo?.checksum)
+                })),
+                identity: {
+                    status: profile?.identity?.status || null,
+                    locked: profile?.identity?.locked === true,
+                    completeness: Number(profile?.identity?.validation?.completeness || 0),
+                    evidenceScore: Number(evidence?.score || 0),
+                    evidenceReady: evidence?.readyForLock === true,
+                    primaryForEvidence: evidence?.hasPrimaryPhoto === true,
+                    criticalMissing: evidence?.criticalMissingSections || [],
+                    invalidEvidenceCount: Number(evidence?.invalidEvidenceCount || 0)
+                },
+                direction: {
+                    objective: profile?.direction?.objective || null,
+                    format: profile?.direction?.format || null,
+                    status: profile?.direction?.status || null,
+                    expression: profile?.direction?.pose?.expression || null,
+                    wardrobeStyle: profile?.direction?.wardrobe?.style || null,
+                    garmentCount: Array.isArray(profile?.direction?.wardrobe?.garments)
+                        ? profile.direction.wardrobe.garments.length
+                        : 0
+                },
+                validation: validation ? {
+                    ready: validation.ready === true,
+                    valid: validation.valid === true,
+                    errorCodes: (validation.errors || []).map(item => item?.code).filter(Boolean),
+                    warningCodes: (validation.warnings || []).map(item => item?.code).filter(Boolean)
+                } : null,
+                validationException
+            };
+        } catch (error) {
+            return {
+                auditException: {
+                    code: error?.code || error?.name || "ERROR",
+                    message: error?.message || String(error)
+                }
+            };
+        }
+    }
+
     async function send() {
         const status = failed ? "failed" : "passed";
         lines.push(`SUMMARY ${failed ? "FAIL" : "PASS"}`);
         const text = lines.join("\n");
         out.textContent = text;
-        await fetch("/results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, step, text }) });
+        await fetch("/results", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                status,
+                step,
+                text,
+                errorCode: failureError?.code || failureError?.name || null,
+                errorMessage: failureError?.message || null,
+                audit: failureAudit
+            })
+        });
     }
 
     async function verifyReloadPersistence(win, originalId, demoId) {
         step = "demo-reload";
         await win.ProfileStorage?.flush?.();
-
         const reloadFrame = document.createElement("iframe");
         reloadFrame.hidden = true;
         document.body.appendChild(reloadFrame);
@@ -117,12 +199,12 @@
             } catch (error) {
                 reportedFailureStep = lastUsefulDemoStage;
                 step = reportedFailureStep;
-                fail(
-                    "demo prepare runtime exception",
-                    `${error?.code || error?.name || "ERROR"}: ${error?.message || String(error)} | stage=${reportedFailureStep} | progress=${progress.join(" > ")}`
-                );
+                failureError = error;
+                failureAudit = buildReadinessAudit(win);
+                fail("demo prepare runtime exception", `${error?.code || error?.name || "ERROR"}: ${error?.message || String(error)}`);
                 throw error;
             }
+
             step = "demo-verify";
             check(demo.profileName === win.DemoModeService.DEMO_NAME, "demo profile named");
             check(demo.photoCount === 5, "demo tiene cinco fotos", String(demo.photoCount));
@@ -160,11 +242,8 @@
 
             step = "complete";
         } catch (error) {
-            if (reportedFailureStep) {
-                step = reportedFailureStep;
-            } else {
-                fail("runtime exception", error?.stack || error?.message || String(error));
-            }
+            if (reportedFailureStep) step = reportedFailureStep;
+            else fail("runtime exception", error?.stack || error?.message || String(error));
         }
         await send();
     }, { once: true });
